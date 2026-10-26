@@ -2,3 +2,4 @@
 
 ### Members
 - Kaylee Ulep (klu6)
+- Amy Yang (aly32)
