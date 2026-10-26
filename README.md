@@ -1,1 +1,4 @@
-# cs3110-team5-project
+# CS3110 Team Project: Team 5 - Slay Team
+
+###Members
+- Kaylee Ulep (klu6)
