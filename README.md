@@ -3,3 +3,4 @@
 ### Members
 - Kaylee Ulep (klu6)
 - Amy Yang (aly32)
+- Jennifer Ng (jn576)
