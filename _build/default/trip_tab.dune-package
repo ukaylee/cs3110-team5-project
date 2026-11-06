@@ -1,0 +1,4 @@
+(lang dune 3.24)
+(name trip_tab)
+(sections (lib .) (doc ../../doc/trip_tab))
+(files (lib (META dune-package opam)) (doc (README.md)))

@@ -1,0 +1,8 @@
+(test
+ (name test_main)
+ (libraries trip_tab ounit2))
+
+(cram
+ (deps
+  ../bin/main.exe
+  (glob_files_rec ../data/*)))

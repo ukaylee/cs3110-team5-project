@@ -1,0 +1,8 @@
+lib: [
+  "_build/install/default/lib/trip_tab/META"
+  "_build/install/default/lib/trip_tab/dune-package"
+  "_build/install/default/lib/trip_tab/opam"
+]
+doc: [
+  "_build/install/default/doc/trip_tab/README.md"
+]
