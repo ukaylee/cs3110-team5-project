@@ -1,3 +1,1 @@
-(executable
- (name main)
- (libraries trip_tab))
+let () = print_endline "Trip Tab: skeleton builds. Commands coming soon."
