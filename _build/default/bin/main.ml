@@ -1,1 +1,0 @@
-let () = print_endline "Trip Tab: skeleton builds. Commands coming soon."
