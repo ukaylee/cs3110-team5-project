@@ -16,9 +16,8 @@ let make ~id ~description ~payer ~category ~total ~shares =
     Error "total must be greater than $0.00"
   else if shares = [] then Error "an expense needs at least one participant"
   else if has_duplicate names then Error "a person is listed more than once"
-  else if
-    List.exists (fun (_, m) -> Money.compare m Money.zero < 0) shares
-  then Error "shares cannot be negative"
+  else if List.exists (fun (_, m) -> Money.compare m Money.zero < 0) shares then
+    Error "shares cannot be negative"
   else
     let owed = Money.sum (List.map snd shares) in
     if not (Money.equal owed total) then
@@ -35,4 +34,6 @@ let total e = e.total
 let shares e = e.shares
 
 let share_of e p =
-  match List.assoc_opt p e.shares with Some m -> m | None -> Money.zero
+  match List.assoc_opt p e.shares with
+  | Some m -> m
+  | None -> Money.zero
