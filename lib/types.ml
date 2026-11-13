@@ -1,5 +1,11 @@
 type person = string
-type category = Travel | Lodging | Dining | Shopping | Other
+
+type category =
+  | Travel
+  | Lodging
+  | Dining
+  | Shopping
+  | Other
 
 let all_categories = [ Travel; Lodging; Dining; Shopping; Other ]
 
