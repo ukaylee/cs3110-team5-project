@@ -10,6 +10,10 @@ type bill = {
   tip : Money.t;
 }
 
+module PersonMap = Map.Make (String)
+(*so we can use a dictionary (map) for list of people*)
+
+(* helper for the validation function *)
 let has_duplicate names =
   List.length (List.sort_uniq String.compare names) <> List.length names
 
@@ -38,14 +42,10 @@ let validate_bill bill =
   else Ok bill
 
 let add_person_share person amount subtotals =
-  match List.assoc_opt person subtotals with
-  | None -> (person, amount) :: subtotals
+  match PersonMap.find_opt person subtotals with
+  | None -> PersonMap.add person amount subtotals
   | Some current_amount ->
-      List.map (*look thru whole list for person :( )*)
-        (fun (p, current_amount) ->
-          if p = person then (p, Money.add current_amount amount)
-          else (p, current_amount))
-        subtotals
+      PersonMap.add person (Money.add current_amount amount) subtotals
 
 let sum_item_shares bill =
   List.fold_left
@@ -59,11 +59,13 @@ let sum_item_shares bill =
         (fun subtotals (person, amount) ->
           add_person_share person amount subtotals)
         subtotals item_shares)
-    [] bill.items
+    PersonMap.empty bill.items
 
 let add_tax tax_and_tip subtotals =
+  let subtotals = PersonMap.bindings subtotals in
   let weights =
     (* figure out what percent they are of the total *)
+    (*also convert from person map to a list because expense expects a list*)
     List.map (fun (_, amount) -> Money.to_cents amount) subtotals
   in
   let tax_tip_shares = Money.allocate tax_and_tip weights in
@@ -80,6 +82,9 @@ let itemized id description payer category bill =
   if not (validate_bill bill = Ok bill) then Error "bill is invalid"
   else
     let subtotals = sum_item_shares bill in
+    (*subtotals is a person map with key person and value money owed. we have a
+      person map for now because it makes look up easier, but we will later
+      convert from person map to a list*)
 
     let tax_and_tip = Money.add bill.tax bill.tip in
 
