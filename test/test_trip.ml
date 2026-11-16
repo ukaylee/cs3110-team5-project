@@ -1,6 +1,6 @@
 (** Tests for {!Trip}. Expected values are worked out by hand, mostly from the
-    team's balance/settle scenario 1 (Amy, Sandy, Jennifer, Kaylee; gas,
-    dinner, souvenirs). Expenses are built directly with [Expense.make] and
+    team's balance/settle scenario 1 (Amy, Sandy, Jennifer, Kaylee; gas, dinner,
+    souvenirs). Expenses are built directly with [Expense.make] and
     [Money.of_cents]. *)
 
 open OUnit2
@@ -31,7 +31,8 @@ let expense ~id ~payer ~total shares =
 let trip_with names =
   List.fold_left
     (fun t p -> ok (Trip.add_traveler t p))
-    (Trip.create ~name:"Weekend") names
+    (Trip.create ~name:"Weekend")
+    names
 
 let four = [ "Amy"; "Sandy"; "Jennifer"; "Kaylee" ]
 let ids t = List.map Expense.id (Trip.expenses t)
@@ -59,7 +60,8 @@ let dinner () =
     [ ("Amy", 2000); ("Sandy", 1500); ("Jennifer", 2500) ]
 
 let souvenirs () =
-  expense ~id:3 ~payer:"Jennifer" ~total:3000 [ ("Amy", 1500); ("Kaylee", 1500) ]
+  expense ~id:3 ~payer:"Jennifer" ~total:3000
+    [ ("Amy", 1500); ("Kaylee", 1500) ]
 
 (** [scenario1 ()] is the four travelers with all three expenses added. *)
 let scenario1 () =
@@ -166,9 +168,7 @@ let test_add_expense_unknown_participant _ =
 let test_add_expense_duplicate_id _ =
   let t = trip_with four in
   let t = ok (Trip.add_expense t (gas ())) in
-  let again =
-    expense ~id:1 ~payer:"Amy" ~total:1000 [ ("Amy", 1000) ]
-  in
+  let again = expense ~id:1 ~payer:"Amy" ~total:1000 [ ("Amy", 1000) ] in
   assert_error "duplicate id" (Trip.add_expense t again);
   check_ids "unchanged" [ 1 ] t
 

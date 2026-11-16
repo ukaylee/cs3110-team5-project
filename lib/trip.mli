@@ -2,12 +2,12 @@
 
     [Trip.t] is the single piece of shared state that {!Session} threads through
     the program. It is {b immutable}: every operation that "changes" a trip
-    returns a new trip and leaves the old one untouched, so a failed command
-    can never leave the state half-updated.
+    returns a new trip and leaves the old one untouched, so a failed command can
+    never leave the state half-updated.
 
-    Operations that can fail return [(t, string) result]. The [Error] message
-    is a complete, human-readable sentence fragment that {!Session} can print
-    as is. This matches {!Expense.make}.
+    Operations that can fail return [(t, string) result]. The [Error] message is
+    a complete, human-readable sentence fragment that {!Session} can print as
+    is. This matches {!Expense.make}.
 
     {b Ordering guarantees} (other modules and tests rely on these):
     - {!travelers} lists people in the order they were added.
@@ -19,8 +19,7 @@
     satisfies them):
     - traveler names are nonempty and pairwise distinct;
     - expense ids are pairwise distinct;
-    - the payer of every expense, and every person in its shares, is a
-      traveler;
+    - the payer of every expense, and every person in its shares, is a traveler;
     - every budget is nonnegative.
 
     {!Expense.make} deliberately does not check that people belong to a trip;
@@ -32,8 +31,8 @@ type t
 (** Creating a trip *)
 
 val create : name:string -> t
-(** [create ~name] is a new trip called [name] with no travelers, no
-    expenses, and no budgets. *)
+(** [create ~name] is a new trip called [name] with no travelers, no expenses,
+    and no budgets. *)
 
 val name : t -> string
 (** [name t] is the name [t] was created with. *)
@@ -42,19 +41,19 @@ val name : t -> string
 
 val add_traveler : t -> Types.person -> (t, string) result
 (** [add_traveler t p] is [Ok t'], where [t'] is [t] with [p] added at the
-    {e end} of {!travelers}. It is [Error msg] if [p] is empty (or only
-    spaces) or if [p] is already a traveler. Names are compared exactly, so
-    ["amy"] and ["Amy"] are different travelers (see {!Types.person}). *)
+    {e end} of {!travelers}. It is [Error msg] if [p] is empty (or only spaces)
+    or if [p] is already a traveler. Names are compared exactly, so ["amy"] and
+    ["Amy"] are different travelers (see {!Types.person}). *)
 
 val remove_traveler : t -> Types.person -> (t, string) result
 (** [remove_traveler t p] is [Ok t'], where [t'] is [t] without [p]. It is
     [Error msg] if [p] is not a traveler, or if [p] is the payer of, or has a
-    share in, any expense of [t]. (The caller must delete or edit those
-    expenses first; this keeps the invariants above true.) *)
+    share in, any expense of [t]. (The caller must delete or edit those expenses
+    first; this keeps the invariants above true.) *)
 
 val travelers : t -> Types.person list
-(** [travelers t] is every traveler of [t], in the order they were added.
-    This includes travelers who appear in no expense. *)
+(** [travelers t] is every traveler of [t], in the order they were added. This
+    includes travelers who appear in no expense. *)
 
 val is_traveler : t -> Types.person -> bool
 (** [is_traveler t p] is [true] iff [p] is a traveler of [t]. *)
@@ -62,24 +61,24 @@ val is_traveler : t -> Types.person -> bool
 (** Expenses *)
 
 val next_id : t -> int
-(** [next_id t] is an id that {!add_expense} will accept next. It differs
-    from the id of every expense currently in [t] and from every id used
-    by an earlier {!add_expense} on [t]'s history, so deleting an expense never
-    causes its id to be handed out again. Callers build expenses with
+(** [next_id t] is an id that {!add_expense} will accept next. It differs from
+    the id of every expense currently in [t] and from every id used by an
+    earlier {!add_expense} on [t]'s history, so deleting an expense never causes
+    its id to be handed out again. Callers build expenses with
     [Expense.make ~id:(Trip.next_id t) ...]. *)
 
 val add_expense : t -> Expense.t -> (t, string) result
 (** [add_expense t e] is [Ok t'], where [t'] is [t] with [e] added at the
-    {e end} of {!expenses}. It is [Error msg] if the payer of [e] or anyone
-    in its shares is not a traveler of [t], or if [t] already has an expense
-    with the same id as [e]. The payer need not be among the people sharing
-    the expense. *)
+    {e end} of {!expenses}. It is [Error msg] if the payer of [e] or anyone in
+    its shares is not a traveler of [t], or if [t] already has an expense with
+    the same id as [e]. The payer need not be among the people sharing the
+    expense. *)
 
 val edit_expense : t -> Expense.t -> (t, string) result
-(** [edit_expense t e] is [Ok t'], where [t'] is [t] with the expense whose
-    id equals [Expense.id e] replaced by [e], {e in the same position} in
-    {!expenses}. It is [Error msg] if [t] has no expense with that id, or if
-    the payer or anyone in the shares of [e] is not a traveler. *)
+(** [edit_expense t e] is [Ok t'], where [t'] is [t] with the expense whose id
+    equals [Expense.id e] replaced by [e], {e in the same position} in
+    {!expenses}. It is [Error msg] if [t] has no expense with that id, or if the
+    payer or anyone in the shares of [e] is not a traveler. *)
 
 val delete_expense : t -> int -> (t, string) result
 (** [delete_expense t id] is [Ok t'], where [t'] is [t] without the expense
@@ -94,9 +93,9 @@ val expenses : t -> Expense.t list
 (** Budgets *)
 
 val set_budget : t -> Types.category -> Money.t -> (t, string) result
-(** [set_budget t c m] is [Ok t'], where [t'] is [t] with the budget for [c]
-    set to [m], replacing any earlier budget for [c]. It is [Error msg] if
-    [m] is negative. A budget of {!Money.zero} is allowed. *)
+(** [set_budget t c m] is [Ok t'], where [t'] is [t] with the budget for [c] set
+    to [m], replacing any earlier budget for [c]. It is [Error msg] if [m] is
+    negative. A budget of {!Money.zero} is allowed. *)
 
 val budgets : t -> (Types.category * Money.t) list
 (** [budgets t] is the budget of each category that has one, in the order of
