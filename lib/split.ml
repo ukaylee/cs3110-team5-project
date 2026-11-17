@@ -13,14 +13,17 @@ type bill = {
 module PersonMap = Map.Make (String)
 (*so we can use a dictionary (map) for list of people*)
 
-(* helper for the validation function *)
+(** [has_duplicate names] returns [true] if [names] contains any duplicate
+    strings, and [false] otherwise. helper for the validation function. *)
 let has_duplicate names =
   List.length (List.sort_uniq String.compare names) <> List.length names
 
-(* validate preconditions: each item must have at least one participant, each
-   item price must be non-negative, tax + tip must be non-negative, participant
-   names should be valid, there should be no duplicate participant names, at
-   least one item should be in the bill *)
+(** [validate_bill bill] checks that the bill contains at least one item, each
+    item has at least one participant, all monetary amounts are non-negative, no
+    item has duplicate participants, and the total item subtotal is positive.
+
+    Returns [Ok bill] if all conditions are satisfied, or [Error msg] describing
+    the first invalid condition. *)
 let validate_bill bill =
   if bill.items = [] then Error "bill must contain at least one item"
   else if not (List.for_all (fun item -> item.participants <> []) bill.items)
@@ -45,12 +48,20 @@ let validate_bill bill =
   then Error "total item subtotal must be greater than zero"
   else Ok bill
 
+(** [add_person_share person amount subtotals] adds [amount] to [person]'s
+    subtotal in [subtotals]. If [person] is not already present, a new entry is
+    added. Returns the updated map. *)
 let add_person_share person amount subtotals =
   match PersonMap.find_opt person subtotals with
   | None -> PersonMap.add person amount subtotals
   | Some current_amount ->
       PersonMap.add person (Money.add current_amount amount) subtotals
 
+(** [sum_item_shares bill] splits each item's price evenly among its
+    participants and accumulates each person's shares across all items. Returns
+    a map from participants to their subtotals, excluding tax and tip.
+
+    Requires: [bill] has passed [validate_bill]. *)
 let sum_item_shares bill =
   List.fold_left
     (fun subtotals (item : item) ->
@@ -65,6 +76,13 @@ let sum_item_shares bill =
         subtotals item_shares)
     PersonMap.empty bill.items
 
+(** [allocate_tax_tip tax_and_tip subtotals] distributes [tax_and_tip]
+    proportionally among participants according to their subtotals. Returns a
+    list of participants and their final amounts owed, including their portions
+    of tax and tip.
+
+    Requires: [subtotals] is nonempty, contains non-negative amounts, and has a
+    positive total. [tax_and_tip] is non-negative. *)
 let allocate_tax_tip tax_and_tip subtotals =
   let weights =
     (* figure out what percent they are of the total *)
@@ -80,8 +98,6 @@ let allocate_tax_tip tax_and_tip subtotals =
   in
   final_shares
 
-(* type is itemized : id:int -> description:string -> payer:Types.person ->
-   category:Types.category -> bill:bill -> (Expense.t, string) result = *)
 let itemized id description payer category bill =
   match validate_bill bill with
   | Error msg -> Error msg
