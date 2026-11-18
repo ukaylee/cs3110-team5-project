@@ -117,7 +117,7 @@ let greedy_tests =
 let pay payer payee cents : Settle.payment =
   { payer; payee; amount = Money.of_cents cents }
 
-let other_tests =
+let misc_tests =
   [
     ( "apply a partial payment" >:: fun _ ->
       let b = balances [ ("Amy", 500); ("Sandy", -500) ] in
@@ -154,5 +154,124 @@ let other_tests =
         (Settle.to_string []) );
   ]
 
-let tests = "settle tests" >::: greedy_tests @ other_tests
+(* randomized property tests *)
+
+type random_expense = {
+  paid_by : int;  (** index of the payer *)
+  split : (int * int) list;  (** (index of person, share in cents) *)
+}
+(** A randomly generated expense, before it is turned into an [Expense.t].
+    People are numbered [0] to [n - 1] and named by {!traveler_name}. *)
+
+(** [traveler_name i] is the name of the [i]th random traveler, e.g. ["P3"]. *)
+let traveler_name i = "P" ^ string_of_int i
+
+(** [gaps points] is the differences between consecutive elements of [points],
+    e.g. [gaps [0; 3; 3; 10]] is [[3; 0; 7]]. *)
+let rec gaps = function
+  | a :: (b :: _ as rest) -> (b - a) :: gaps rest
+  | _ -> []
+
+(** [amounts_gen total k] generates [k] nonnegative amounts that sum to exactly
+    [total], by cutting [0..total] at [k - 1] random points. Requires: [k >= 1]
+    and [total >= 0]. *)
+let amounts_gen total k =
+  let open QCheck.Gen in
+  list_size (return (k - 1)) (int_bound total) >|= fun cuts ->
+  gaps ((0 :: List.sort compare cuts) @ [ total ])
+
+(** [expense_gen n] generates a random valid expense among [n] travelers: a
+    random payer, a total between $0.01 and $1000.00, and a random nonempty set
+    of participants with random (possibly zero) shares. Requires: [n >= 1]. *)
+let expense_gen n =
+  let open QCheck.Gen in
+  int_bound (n - 1) >>= fun paid_by ->
+  int_range 1 100_000 >>= fun total ->
+  int_range 1 n >>= fun k ->
+  shuffle_list (List.init n Fun.id) >>= fun people ->
+  amounts_gen total k >|= fun amounts ->
+  {
+    paid_by;
+    split = List.combine (List.filteri (fun i _ -> i < k) people) amounts;
+  }
+
+(** [trip_gen] generates [(n, expenses)]: between 1 and 8 travelers and up to 15
+    random expenses among them. *)
+let trip_gen =
+  let open QCheck.Gen in
+  int_range 1 8 >>= fun n ->
+  list_size (int_bound 15) (expense_gen n) >|= fun expenses -> (n, expenses)
+
+let print_random_expense e =
+  Printf.sprintf "%s paid {%s}" (traveler_name e.paid_by)
+    (e.split
+    |> List.map (fun (p, c) -> Printf.sprintf "%s=%d" (traveler_name p) c)
+    |> String.concat ", ")
+
+let print_trip (n, expenses) =
+  Printf.sprintf "%d travelers: %s" n
+    (String.concat "; " (List.map print_random_expense expenses))
+
+(** [arbitrary_trip] is {!trip_gen} with a printer, so a failing test shows the
+    trip that broke it. *)
+let arbitrary_trip = QCheck.make ~print:print_trip trip_gen
+
+(** [to_expenses expenses] turns random expenses into real ones, with ids [0],
+    [1], .... *)
+let to_expenses expenses =
+  List.mapi
+    (fun id e ->
+      let shares = List.map (fun (p, c) -> (traveler_name p, c)) e.split in
+      expense ~id ~payer:(traveler_name e.paid_by)
+        ~total:(List.fold_left (fun acc (_, c) -> acc + c) 0 e.split)
+        shares)
+    expenses
+
+(** [balances_of (n, expenses)] is the balances of a random trip. *)
+let balances_of (n, expenses) =
+  Balance.compute (List.init n traveler_name) (to_expenses expenses)
+
+let count_nonzero b =
+  List.length
+    (List.filter
+       (fun (_, m) -> not (Money.equal m Money.zero))
+       (Balance.to_list b))
+
+(** [property name prop] is an OUnit test that checks [prop] on 500 random
+    trips. *)
+let property name prop =
+  QCheck_ounit.to_ounit2_test
+    (QCheck.Test.make ~count:500 ~name arbitrary_trip prop)
+
+let property_tests =
+  [
+    property "balances always sum to zero" (fun trip ->
+        let b = balances_of trip in
+        Money.equal (Money.sum (List.map snd (Balance.to_list b))) Money.zero);
+    property "expense order does not change balances" (fun (n, expenses) ->
+        cents (balances_of (n, expenses))
+        = cents (balances_of (n, List.rev expenses)));
+    property "greedy payments settle everyone exactly" (fun trip ->
+        let b = balances_of trip in
+        Settle.is_settled (Settle.apply b (Settle.greedy b)));
+    property "greedy payments are positive and between different people"
+      (fun trip ->
+        List.for_all
+          (fun (p : Settle.payment) ->
+            Money.compare p.amount Money.zero > 0 && p.payer <> p.payee)
+          (Settle.greedy (balances_of trip)));
+    property "greedy uses at most (nonzero balances - 1) payments" (fun trip ->
+        let b = balances_of trip in
+        List.length (Settle.greedy b) <= max 0 (count_nonzero b - 1));
+    property "nobody both pays and receives" (fun trip ->
+        let payments = Settle.greedy (balances_of trip) in
+        List.for_all
+          (fun (p : Settle.payment) ->
+            List.for_all
+              (fun (q : Settle.payment) -> q.payee <> p.payer)
+              payments)
+          payments);
+  ]
+
+let tests = "settle tests" >::: greedy_tests @ misc_tests @ property_tests
 let _ = run_test_tt_main tests
