@@ -2,7 +2,7 @@
     history and results within group. *)
 
 (** [totals_by_category expenses] returns the total monetary value of the
-    expenses associated with each spending category. *)
+    [expenses] associated with each spending category. *)
 let totals_by_category expenses =
   List.map
     (fun category ->
@@ -17,8 +17,8 @@ let totals_by_category expenses =
       (category, category_total))
     Types.all_categories
 
-(** [totals_by_person people expenses] returns the share of expenses assigned to
-    each person in the group. *)
+(** [totals_by_person people expenses] returns the share of [expenses] assigned
+    to each person in [people]. *)
 let totals_by_person people expenses =
   List.map
     (fun person ->
@@ -73,7 +73,7 @@ let format_report people expenses budgets =
   let person_report =
     List.map
       (fun (person, person_total) ->
-        Printf.sprintf " %s: $%s" person (Money.to_string person_total))
+        Printf.sprintf "| %s: $%s" person (Money.to_string person_total))
       (totals_by_person people expenses)
   in
   String.concat "\n"
