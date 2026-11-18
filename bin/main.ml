@@ -9,6 +9,7 @@ open Trip_tab
 let usage () =
   prerr_endline "Usage: main.exe [--load FILE]";
   exit 1
+
 let interactive = Unix.isatty Unix.stdin
 
 let prompt text =
@@ -18,10 +19,9 @@ let prompt text =
 
 let read_line_opt () = try Some (read_line ()) with End_of_file -> None
 
-(** [initial_trip ()] is the trip to start with: loaded from the file given
-    with [--load FILE], or a new trip whose name is read from the terminal.
-    Exits with status 1 if the arguments are wrong or the file cannot be
-    loaded. *)
+(** [initial_trip ()] is the trip to start with: loaded from the file given with
+    [--load FILE], or a new trip whose name is read from the terminal. Exits
+    with status 1 if the arguments are wrong or the file cannot be loaded. *)
 let initial_trip () =
   match List.tl (Array.to_list Sys.argv) with
   | [] ->

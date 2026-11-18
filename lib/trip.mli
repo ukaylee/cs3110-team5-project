@@ -100,3 +100,6 @@ val set_budget : t -> Types.category -> Money.t -> (t, string) result
 val budgets : t -> (Types.category * Money.t) list
 (** [budgets t] is the budget of each category that has one, in the order of
     {!Types.all_categories}. Categories with no budget are omitted. *)
+
+val budget_state : t -> Budget.t
+(** [budget_state t] returns the category-budget state of [t]. *)

@@ -2,12 +2,16 @@ type t = {
   name : string;
   travelers : Types.person list; (* in the order added *)
   expenses : Expense.t list; (* in the order added *)
+<<<<<<< HEAD
   budgets : (Types.category * Money.t) list; (* in Types.all_categories order *)
+=======
+  budgets : Budget.t;
+>>>>>>> sandy/trip
   next_id : int; (* never lowered, so deleted ids are not reused *)
 }
 
 let create ~name =
-  { name; travelers = []; expenses = []; budgets = []; next_id = 1 }
+  { name; travelers = []; expenses = []; budgets = Budget.empty; next_id = 1 }
 
 let name t = t.name
 let travelers t = t.travelers
@@ -87,19 +91,17 @@ let delete_expense t id =
 
 (* ---------- budgets ---------- *)
 
-let budgets t = t.budgets
+let budgets t =
+  List.filter_map
+    (fun category ->
+      match Budget.get t.budgets category with
+      | None -> None
+      | Some amount -> Some (category, amount))
+    Types.all_categories
 
-let set_budget t c m =
-  if Money.compare m Money.zero < 0 then Error "a budget cannot be negative"
-  else
-    let updated = (c, m) :: List.remove_assoc c t.budgets in
-    (* Rebuild in the canonical category order. *)
-    let ordered =
-      List.filter_map
-        (fun c' ->
-          match List.assoc_opt c' updated with
-          | Some amount -> Some (c', amount)
-          | None -> None)
-        Types.all_categories
-    in
-    Ok { t with budgets = ordered }
+let budget_state t = t.budgets
+
+let set_budget t category amount =
+  match Budget.set t.budgets category amount with
+  | Error message -> Error message
+  | Ok updated_budgets -> Ok { t with budgets = updated_budgets }
