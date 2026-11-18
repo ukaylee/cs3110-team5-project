@@ -78,6 +78,87 @@ let greedy balances =
   let debtors, creditors = split_by_sign balances in
   match_up debtors creditors
 
+(* fewest payments *)
+
+(** [max_searched] is the largest number of people with a nonzero balance for
+    which {!payments} searches for the fewest payments. *)
+let max_searched = 12
+
+(** [sum_of entries] is the total of the balances in [entries]. *)
+let sum_of entries = Money.sum (List.map snd entries)
+
+(** [is_zero_sum entries] is [true] iff the balances in [entries] sum to zero.
+*)
+let is_zero_sum entries = Money.equal (sum_of entries) Money.zero
+
+(** [choices xs] is every way to pick some of the elements of [xs], as pairs
+    [(picked, left)]. In each pair, every element of [xs] is in exactly one of
+    [picked] and [left], and both keep the order of [xs]. There are [2^n] pairs
+    if [xs] has [n] elements, starting with [([], xs)]. For example,
+    [choices [1; 2]] is [[([], [1; 2]); ([1], [2]); ([2], [1]); ([1; 2], [])]].
+*)
+let rec choices = function
+  | [] -> [ ([], []) ]
+  | x :: rest ->
+      let without_x = List.map (fun (picked, left) -> (picked, x :: left)) in
+      let with_x = List.map (fun (picked, left) -> (x :: picked, left)) in
+      let rest_choices = choices rest in
+      without_x rest_choices @ with_x rest_choices
+
+(** [most_groups candidates] is the element of [candidates] with the most
+    groups; on a tie, the earliest one. It is [[]] if [candidates] is empty. *)
+let most_groups candidates =
+  List.fold_left
+    (fun best candidate ->
+      if List.length candidate > List.length best then candidate else best)
+    [] candidates
+
+(** [best_groups entries] splits [entries] into as many groups as possible whose
+    balances each sum to zero. Every entry is in exactly one group, and each
+    group keeps the order of [entries]. It is [[]] if [entries] is empty.
+    Requires: [entries] sums to zero, has no zero balances, and lists each
+    person once. *)
+let rec best_groups entries =
+  match entries with
+  | [] -> []
+  | ((_, first_balance) as first) :: rest -> (
+      let cancels (_, balance) =
+        Money.equal (Money.add first_balance balance) Money.zero
+      in
+      match List.find_opt cancels rest with
+      | Some ((partner_person, _) as partner) ->
+          (* Shortcut: two people who exactly cancel are always one group in
+             some best split, so there is no need to search. *)
+          let left =
+            List.filter (fun (person, _) -> person <> partner_person) rest
+          in
+          [ first; partner ] :: best_groups left
+      | None ->
+          (* [first] must be in some zero-sum group: try every set of companions
+             that makes one, and keep the best split of whoever is left. Picking
+             everyone always works, so there is a candidate. *)
+          choices rest
+          |> List.filter (fun (picked, _) -> is_zero_sum (first :: picked))
+          |> List.map (fun (picked, left) ->
+              (first :: picked) :: best_groups left)
+          |> most_groups)
+
+(** [settle_group group] is {!greedy} on the balances in [group]. Requires:
+    [group] sums to zero and lists each person once. *)
+let settle_group group =
+  match Balance.of_list group with
+  | Ok balances -> greedy balances
+  | Error msg -> failwith ("Settle.payments: impossible: " ^ msg)
+
+let payments balances =
+  let owing_or_owed =
+    List.filter
+      (fun (_, balance) -> not (Money.equal balance Money.zero))
+      (Balance.to_list balances)
+  in
+  if List.length owing_or_owed > max_searched then greedy balances
+  else List.concat_map settle_group (best_groups owing_or_owed)
+
 (* applying payments *)
 
 (** [check_person balances person] is [()] if [person] is in [balances].

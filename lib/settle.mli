@@ -17,6 +17,18 @@ val greedy : Balance.t -> payment list
     whoever comes first in [b]. Payments are listed in the order they are
     chosen. *)
 
+val payments : Balance.t -> payment list
+(** [payments b] is a list of payments that settles [b] using as few payments as
+    possible. {!apply}[ b (payments b)] leaves everyone at zero, and no list of
+    payments that settles [b] is shorter. The people with a nonzero balance are
+    split into as many separate groups as possible whose balances each sum to
+    zero, and each group is settled by {!greedy}. A group of [k] people needs
+    [k - 1] payments, so with [n] people owing or owed and [g] groups, there are
+    [n - g] payments. The search for groups takes exponential time, so if more
+    than 12 people in [b] have a nonzero balance, [payments b] is [greedy b]
+    instead, which is still a valid plan but may not have the fewest payments.
+*)
+
 val apply : Balance.t -> payment list -> Balance.t
 (** [apply b payments] is the balances after every payment in [payments] is
     made: each payment raises its payer's balance by its amount and lowers its
