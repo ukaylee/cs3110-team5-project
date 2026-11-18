@@ -1,13 +1,22 @@
-(** Manages the current trip and applies user commands. *)
+(** Manages the active trip and processes expenses. *)
 
 type t
 
+(** [create trip] creates a session containing [trip]. *)
 val create : Trip.t -> t
-(** [create trip] creates a session with [trip] as its active trip. *)
 
+(** [trip session] returns the trip stored in [session]. *)
 val trip : t -> Trip.t
-(** [trip session] returns the current trip. *)
 
-(** Applies commands to the current trip. *)
+(** [add_bill session description payer category bill] creates an
+    itemized expense and adds it to the current trip.
 
-val apply : Trip.t -> Command.t -> (Trip.t, string) result
+    Returns [Ok session'] containing the updated trip, or
+    [Error msg] if the bill or expense is invalid. *)
+val add_bill :
+  t ->
+  string ->
+  Types.person ->
+  Types.category ->
+  Split.bill ->
+  (t, string) result

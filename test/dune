@@ -1,5 +1,5 @@
 (tests
- (names test_main test_split)
+ (names test_main test_split test_session)
  (libraries trip_tab ounit2))
 
 (cram
