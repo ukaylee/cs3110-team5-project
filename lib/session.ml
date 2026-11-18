@@ -37,7 +37,13 @@ let add_bill session description payer category bill =
   let id = Trip.next_id session.trip in
   match Split.itemized id description payer category bill with
   | Error msg -> Error msg
-  | Ok expense -> (
-      match Trip.add_expense session.trip expense with
-      | Error msg -> Error msg
-      | Ok updated_trip -> add_expense session expense)
+  | Ok expense -> add_expense session expense
+
+(** [apply session command] executes [command] on [session]. Returns the updated
+    session on success or an error message if the command cannot be completed.
+*)
+let apply session command =
+  match command with
+  | Command.AddBill { description; payer; category; bill } ->
+      add_bill session description payer category bill
+  | Command.Quit -> Ok session

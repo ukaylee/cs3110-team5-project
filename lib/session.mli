@@ -40,3 +40,7 @@ val add_expense : t -> Expense.t -> (t, string) result
 
 (** [set_budget session category amount] updates the budget for a category. *)
 val set_budget : t -> Types.category -> Money.t -> (t, string) result
+
+(** [apply session command] applies a command to the current session.
+    Returns the updated session or an error message. *)
+val apply : t -> Command.t -> (t, string) result
