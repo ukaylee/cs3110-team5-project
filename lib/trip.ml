@@ -1,13 +1,13 @@
 type t = {
   name : string;
-  travelers : Types.person list;  (* in the order added *)
-  expenses : Expense.t list;  (* in the order added *)
-  budgets : (Types.category * Money.t) list;  (* in Types.all_categories order *)
-  next_id : int;  (* never lowered, so deleted ids are not reused *)
+  travelers : Types.person list; (* in the order added *)
+  expenses : Expense.t list; (* in the order added *)
+  budgets : Budget.t;
+  next_id : int; (* never lowered, so deleted ids are not reused *)
 }
 
 let create ~name =
-  { name; travelers = []; expenses = []; budgets = []; next_id = 1 }
+  { name; travelers = []; expenses = []; budgets = Budget.empty; next_id = 1 }
 
 let name t = t.name
 let travelers t = t.travelers
@@ -19,7 +19,8 @@ let is_traveler t p = List.mem p t.travelers
 
 let add_traveler t p =
   if String.trim p = "" then Error "a traveler's name cannot be empty"
-  else if is_traveler t p then Error (Printf.sprintf "%s is already a traveler" p)
+  else if is_traveler t p then
+    Error (Printf.sprintf "%s is already a traveler" p)
   else Ok { t with travelers = t.travelers @ [ p ] }
 
 (* [involves e p] is true iff [p] paid for [e] or has a share in it. *)
@@ -40,8 +41,8 @@ let remove_traveler t p =
 
 (* ---------- expenses ---------- *)
 
-(* [check_people t e] is [Ok ()] iff the payer and everyone in the shares of
-   [e] are travelers of [t]. *)
+(* [check_people t e] is [Ok ()] iff the payer and everyone in the shares of [e]
+   are travelers of [t]. *)
 let check_people t e =
   let people = Expense.payer e :: List.map fst (Expense.shares e) in
   match List.find_opt (fun p -> not (is_traveler t p)) people with
@@ -54,7 +55,9 @@ let add_expense t e =
   Result.bind (check_people t e) (fun () ->
       match find_expense t (Expense.id e) with
       | Some _ ->
-          Error (Printf.sprintf "an expense with id %d already exists" (Expense.id e))
+          Error
+            (Printf.sprintf "an expense with id %d already exists"
+               (Expense.id e))
       | None ->
           Ok
             {
@@ -84,20 +87,17 @@ let delete_expense t id =
 
 (* ---------- budgets ---------- *)
 
-let budgets t = t.budgets
+let budgets t =
+  List.filter_map
+    (fun category ->
+      match Budget.get t.budgets category with
+      | None -> None
+      | Some amount -> Some (category, amount))
+    Types.all_categories
 
-let set_budget t c m =
-  if Money.compare m Money.zero < 0 then
-    Error "a budget cannot be negative"
-  else
-    let updated = (c, m) :: List.remove_assoc c t.budgets in
-    (* Rebuild in the canonical category order. *)
-    let ordered =
-      List.filter_map
-        (fun c' ->
-          match List.assoc_opt c' updated with
-          | Some amount -> Some (c', amount)
-          | None -> None)
-        Types.all_categories
-    in
-    Ok { t with budgets = ordered }
+let budget_state t = t.budgets
+
+let set_budget t category amount =
+  match Budget.set t.budgets category amount with
+  | Error message -> Error message
+  | Ok updated_budgets -> Ok { t with budgets = updated_budgets }
