@@ -319,6 +319,39 @@ let test_budget_immutable _ =
   assert_equal [] (Trip.budgets (Session.trip original));
   assert_equal 1 (List.length (Trip.budgets (Session.trip updated)))
 
+(* APPLY *)
+let test_apply_add_bill _ =
+  let session =
+    add_travelers (make_session ()) [ "Amy"; "Sandy"; "Jennifer" ]
+  in
+  let command =
+    Command.AddBill
+      {
+        description = "Dinner";
+        payer = "Amy";
+        category = Types.Dining;
+        bill = sample_bill ();
+      }
+  in
+  let updated = expect_ok (Session.apply session command) in
+  let expenses = Trip.expenses (Session.trip updated) in
+  assert_equal 1 (List.length expenses);
+  assert_equal 4400 (Money.to_cents (Expense.total (List.hd expenses)))
+
+let test_apply_invalid_bill _ =
+  let session = add_travelers (make_session ()) [ "Amy" ] in
+  let command =
+    Command.AddBill
+      {
+        description = "Dinner";
+        payer = "Amy";
+        category = Types.Dining;
+        bill = make_bill [] 0 0;
+      }
+  in
+  expect_error (Session.apply session command);
+  assert_equal [] (Trip.expenses (Session.trip session))
+
 (* TEST SUITE *)
 
 let suite =
@@ -358,6 +391,8 @@ let suite =
          "update budget" >:: test_update_budget;
          "negative budget" >:: test_negative_budget;
          "budget immutable" >:: test_budget_immutable;
+         "apply add bill" >:: test_apply_add_bill;
+         "apply invalid bill" >:: test_apply_invalid_bill;
        ]
 
 let () = run_test_tt_main suite
