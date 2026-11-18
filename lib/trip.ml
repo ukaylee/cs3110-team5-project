@@ -2,11 +2,7 @@ type t = {
   name : string;
   travelers : Types.person list; (* in the order added *)
   expenses : Expense.t list; (* in the order added *)
-<<<<<<< HEAD
-  budgets : (Types.category * Money.t) list; (* in Types.all_categories order *)
-=======
   budgets : Budget.t;
->>>>>>> sandy/trip
   next_id : int; (* never lowered, so deleted ids are not reused *)
 }
 
