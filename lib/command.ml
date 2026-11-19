@@ -23,7 +23,12 @@ type t =
   | Add_traveler of Types.person
   | Remove_traveler of Types.person
   | Add_expense of Types.person * Types.category * Money.t * split_spec * string
-  | Add_bill of Types.person * Types.category * bill * string
+  | AddBill of {
+      payer : Types.person;
+      category : Types.category;
+      bill : bill;
+      description : string;
+    }
   | Edit_expense of int
   | Delete_expense of int
   | List_expenses
@@ -217,9 +222,13 @@ let parse_add_bill input =
                       Error "Please provide a bill description."
                     else
                       Ok
-                        (Add_bill
-                           (payer, category, { items; tax; tip }, description)))
-          )
+                        (AddBill
+                           {
+                             description;
+                             payer;
+                             category;
+                             bill = { items; tax; tip };
+                           })))
       | _ ->
           Error
             "Usage: add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM \

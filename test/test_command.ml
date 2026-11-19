@@ -53,12 +53,15 @@ let test_add_bill _ =
       "add-bill Amy dining tax=5.00 tip=9.00 | Dinner at Pokebowl | Chicken \
        Pasta 18.00 Amy | Garlic Bread 8.00 Amy, Sandy"
   with
-  | Command.Add_bill ("Amy", Types.Dining, bill, "Dinner at Pokebowl") -> (
+  | Command.AddBill
+      { payer; category; bill; description } ->
+      assert_equal "Amy" payer;
+      assert_equal Types.Dining category;
+      assert_equal "Dinner at Pokebowl" description;
       assert_equal 500 (Money.to_cents bill.tax);
       assert_equal 900 (Money.to_cents bill.tip);
       assert_equal 2 (List.length bill.items);
-
-      match bill.items with
+      (match bill.items with
       | [ first; second ] ->
           assert_equal "Chicken Pasta" first.name;
           assert_equal 1800 (Money.to_cents first.price);
