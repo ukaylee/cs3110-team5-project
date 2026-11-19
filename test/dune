@@ -1,11 +1,7 @@
-(test
- (name test_money)
- (modules test_money)
+(tests
+ (names test_money test_command)
  (libraries trip_tab ounit2))
-(test
- (name test_command)
- (modules test_command)
- (libraries trip_tab ounit2))
+
 (cram
  (deps
   ../bin/main.exe
