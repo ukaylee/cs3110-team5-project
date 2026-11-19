@@ -1,4 +1,5 @@
 open OUnit2
+open Trip_tab
 
 let parse input =
   match Command.parse input with

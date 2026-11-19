@@ -1,5 +1,6 @@
 
 open OUnit2
+open Trip_tab
 
 let money cents = Money.of_cents cents
 
