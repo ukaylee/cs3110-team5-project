@@ -40,10 +40,12 @@ let add_bill session description payer category bill =
   | Ok expense -> add_expense session expense
 
 (** [apply session command] executes [command] on [session]. Returns the updated
-    session on success or an error message if the command cannot be completed.
-*)
+    session and a success message, or an error message if the command cannot be
+    completed. *)
 let apply session command =
   match command with
-  | Command.AddBill { description; payer; category; bill } ->
-      add_bill session description payer category bill
-  | Command.Quit -> Ok session
+  | Command.AddBill { description; payer; category; bill } -> (
+      match add_bill session description payer category bill with
+      | Ok updated_session -> Ok (updated_session, "Added bill: " ^ description)
+      | Error msg -> Error msg)
+  | Command.Quit -> Ok (session, "Goodbye!")
