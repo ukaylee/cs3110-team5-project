@@ -86,6 +86,16 @@ let add_split_expense session payer category amount split_spec description =
       | Error msg -> Error msg
       | Ok expense -> add_expense session expense)
 
+let edit_split_expense session id payer category amount split_spec description =
+  match calculate_shares session amount split_spec with
+  | Error msg -> Error msg
+  | Ok shares -> (
+      match
+        Expense.make ~id ~description ~payer ~category ~total:amount ~shares
+      with
+      | Error msg -> Error msg
+      | Ok expense -> edit_expense session expense)
+
 (** [convert_bill bill] converts a Command.bill into a Split.bill. *)
 let convert_bill (bill : Command.bill) : Split.bill =
   {
@@ -129,7 +139,12 @@ let apply session command =
       action_with_message
         (add_bill session description payer category split_bill)
         ("Added bill: " ^ description)
-  | Command.Edit_expense _ -> Error "Command not yet implemented"
+  | Command.Edit_expense { id; payer; category; amount; split; description } ->
+      (*may have to change name of split. this is basically the field she would
+        put the split_spec in tho*)
+      action_with_message
+        (edit_split_expense session id payer category amount split description)
+        ("Edited expense: " ^ string_of_int id)
   | Command.Delete_expense id ->
       action_with_message
         (delete_expense session id)
@@ -170,7 +185,7 @@ let apply session command =
               "  add-expense PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION";
               "  add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM \
                PRICE PEOPLE";
-              "  edit-expense ID";
+              "  edit-expense ID PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION";
               "  delete-expense ID";
               "  expenses";
               "  balances";
