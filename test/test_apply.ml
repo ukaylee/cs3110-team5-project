@@ -30,6 +30,17 @@ let make_expense id description total =
            ("Sandy", Money.of_cents (total - (total / 2)));
          ])
 
+let edit_command id amount split =
+  Command.Edit_expense
+    {
+      id;
+      payer = "Amy";
+      category = Types.Dining;
+      amount;
+      split;
+      description = "Updated dinner";
+    }
+
 (* Command.bill and Split.bill are distinct record types. Keep one canonical
    sample bill and convert it when testing the Command.AddBill constructor. *)
 let make_item name cents participants : Split.item =
@@ -234,15 +245,35 @@ let test_apply_add_expense_unknown_person _ =
             "Lunch" )))
 
 (* APPLY: edit, delete and list *)
-(* TODO: Replace this placeholder test with a successful edit-through-apply test
-   once Command.Edit_expense accepts replacement details and Session.apply
-   implements the edit handler. *)
-let test_apply_edit_expense_not_implemented _ =
+let test_apply_edit_expense _ =
   let session = apply_expense_session () in
-  match Session.apply session (Command.Edit_expense 1) with
-  | Error msg -> assert_contains msg "not yet implemented"
-  | Ok _ ->
-      assert_failure "Edit command unexpectedly succeeded; update this test"
+  let command = edit_command 1 (Money.of_cents 3000) Command.Equal_all in
+  match Session.apply session command with
+  | Error msg -> assert_failure msg
+  | Ok (updated, _) ->
+      let expenses = Trip.expenses (Session.trip updated) in
+      assert_equal 1 (List.length expenses);
+      let expense = List.hd expenses in
+      assert_equal 1 (Expense.id expense);
+      assert_equal "Updated dinner" (Expense.description expense);
+      assert_equal 3000 (Money.to_cents (Expense.total expense))
+
+let test_apply_edit_nonexistent _ =
+  let session = apply_expense_session () in
+  let command = edit_command 999 (Money.of_cents 3000) Command.Equal_all in
+  match Session.apply session command with
+  | Error _ -> ()
+  | Ok _ -> assert_failure "Editing nonexistent expense should fail"
+
+let test_apply_edit_invalid_shares _ =
+  let session = apply_expense_session () in
+  let command =
+    edit_command 1 (Money.of_cents 3000)
+      (Command.Exact [ ("Amy", Money.of_cents 1000) ])
+  in
+  match Session.apply session command with
+  | Error _ -> ()
+  | Ok _ -> assert_failure "Shares should sum to expense total"
 
 let test_apply_delete_expense _ =
   let session = apply_expense_session () in
@@ -350,7 +381,9 @@ let apply_expenses_suite =
          "negative amount" >:: test_apply_add_expense_negative;
          "invalid exact" >:: test_apply_add_expense_invalid_exact;
          "unknown participant" >:: test_apply_add_expense_unknown_person;
-         "edit not implemented" >:: test_apply_edit_expense_not_implemented;
+         "edit expense" >:: test_apply_edit_expense;
+         "edit nonexistent" >:: test_apply_edit_nonexistent;
+         "edit invalid shares" >:: test_apply_edit_invalid_shares;
          "delete expense" >:: test_apply_delete_expense;
          "delete unknown expense" >:: test_apply_delete_unknown_expense;
          "list empty" >:: test_apply_list_expenses_empty;
