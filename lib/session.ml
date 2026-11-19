@@ -62,23 +62,29 @@ let format_expense expense =
 
 (* formatters subsection end *)
 
-let calculate_shares session amount split_spec =
-  let people =
-    match split_spec with
-    (*split spec is the way people wanted to split it*)
-    | Command.Equal_all -> Trip.travelers session.trip
-    | Command.Equal people -> people
-    | Command.Exact _ -> []
-  in
-  match split_spec with
+let split_equally amount people =
+  if people = [] then Error "Cannot split an expense among zero travelers."
+  else if Money.compare amount Money.zero < 0 then
+    Error "Cannot split a negative expense."
+  else
+    let amounts = Money.split_evenly amount (List.length people) in
+    Ok (List.combine people amounts)
+
+let calculate_shares session amount = function
+  | Command.Equal_all -> split_equally amount (Trip.travelers session.trip)
+  | Command.Equal people -> split_equally amount people
   | Command.Exact shares -> Ok shares
-  | Command.Equal_all | Command.Equal _ ->
-      if people = [] then Error "Cannot split an expense among zero travelers."
-      else if Money.compare amount Money.zero < 0 then
-        Error "Cannot split a negative expense."
-      else
-        let amounts = Money.split_evenly amount (List.length people) in
-        Ok (List.combine people amounts)
+
+let add_split_expense session payer category amount split_spec description =
+  let id = Trip.next_id session.trip in
+  match calculate_shares session amount split_spec with
+  | Error msg -> Error msg
+  | Ok shares -> (
+      match
+        Expense.make ~id ~description ~payer ~category ~total:amount ~shares
+      with
+      | Error msg -> Error msg
+      | Ok expense -> add_expense session expense)
 
 (** [convert_bill bill] converts a Command.bill into a Split.bill. *)
 let convert_bill (bill : Command.bill) : Split.bill =
@@ -114,19 +120,10 @@ let apply session command =
       action_with_message
         (remove_traveler session person)
         ("Removed traveler: " ^ person)
-  | Command.Add_expense (payer, category, amount, split_spec, description) -> (
-      let id = Trip.next_id session.trip in
-      match calculate_shares session amount split_spec with
-      | Error msg -> Error msg
-      | Ok shares -> (
-          match
-            Expense.make ~id ~description ~payer ~category ~total:amount ~shares
-          with
-          | Error msg -> Error msg
-          | Ok expense ->
-              action_with_message
-                (add_expense session expense)
-                ("Added expense: " ^ description)))
+  | Command.Add_expense (payer, category, amount, split_spec, description) ->
+      action_with_message
+        (add_split_expense session payer category amount split_spec description)
+        ("Added expense: " ^ description)
   | Command.AddBill { description; payer; category; bill } ->
       let split_bill = convert_bill bill in
       action_with_message
@@ -145,9 +142,42 @@ let apply session command =
       in
       Ok (session, message)
   | Command.Balances -> Error "Command not yet implemented"
+  (* when amy pushes balances: | Command.Balances -> let travelers =
+     Trip.travelers session.trip in let expenses = Trip.expenses session.trip in
+     let balances = Balance.compute travelers expenses in Ok (session,
+     Balance.to_string balances) *)
   | Command.Settle -> Error "Command not yet implemented"
+  (* when amy pushes settle: | Command.Settle -> let travelers = Trip.travelers
+     session.trip in let expenses = Trip.expenses session.trip in let balances =
+     Balance.compute travelers expenses in let payments = Settle.payments
+     balances in Ok (session, Settle.to_string payments) *)
   | Command.Set_budget (category, amount) ->
       action_with_message (set_budget session category amount) "Budget updated"
-  | Command.Report -> Error "Command not yet implemented"
-  | Command.Help -> Error "Command not yet implemented"
+  | Command.Report ->
+      let travelers = Trip.travelers session.trip in
+      let expenses = Trip.expenses session.trip in
+      let budgets = Trip.budget_state session.trip in
+      let report = Report.format_report travelers expenses budgets in
+      Ok (session, report)
+  | Command.Help ->
+      Ok
+        ( session,
+          String.concat "\n"
+            [
+              "Available commands:";
+              "  add-traveler NAME";
+              "  remove-traveler NAME";
+              "  add-expense PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION";
+              "  add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM \
+               PRICE PEOPLE";
+              "  edit-expense ID";
+              "  delete-expense ID";
+              "  expenses";
+              "  balances";
+              "  settle";
+              "  budget CATEGORY AMOUNT";
+              "  report";
+              "  help";
+              "  quit";
+            ] )
   | Command.Quit -> Ok (session, "Goodbye!")
