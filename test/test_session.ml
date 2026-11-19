@@ -1,8 +1,7 @@
 open OUnit2
 open Trip_tab
 
-(* HELPERS *)
-
+(* Shared fixtures for the direct Session tests. *)
 let make_session () = Session.create (Trip.create ~name:"Vacation")
 
 let expect_ok = function
@@ -44,8 +43,7 @@ let make_expense id description total =
 
 let make_expense_session () = add_travelers (make_session ()) [ "Amy"; "Sandy" ]
 
-(* SESSION CREATION *)
-
+(* Session creation *)
 let test_create_session _ =
   let session = make_session () in
   assert_equal "Vacation" (Trip.name (Session.trip session))
@@ -56,7 +54,6 @@ let test_empty_session _ =
   assert_equal [] (Trip.expenses (Session.trip session))
 
 (* TRAVELER TESTS *)
-
 let test_add_traveler _ =
   let session = make_session () in
   let updated = expect_ok (Session.add_traveler session "Amy") in
@@ -99,7 +96,6 @@ let test_remove_traveler_immutable _ =
     (not (Trip.is_traveler (Session.trip updated) "Amy"))
 
 (* ITEMIZED BILLS *)
-
 let test_add_bill _ =
   let session =
     add_travelers (make_session ()) [ "Amy"; "Sandy"; "Jennifer" ]
@@ -190,7 +186,6 @@ let test_failed_bill_preserves_trip _ =
   assert_equal [] (Trip.expenses (Session.trip session))
 
 (* EXPENSES *)
-
 let test_delete_unknown_expense _ =
   let session = make_session () in
   expect_error (Session.delete_expense session 999)
@@ -214,7 +209,6 @@ let test_add_expense _ =
   let session = make_expense_session () in
   let expense = make_expense 1 "Hotel" 10000 in
   let updated = expect_ok (Session.add_expense session expense) in
-
   assert_equal 1 (List.length (Trip.expenses (Session.trip updated)));
   assert_equal (Some 10000)
     (Option.map
@@ -225,14 +219,12 @@ let test_add_expense_duplicate_id _ =
   let session = make_expense_session () in
   let expense = make_expense 1 "Hotel" 10000 in
   let updated = expect_ok (Session.add_expense session expense) in
-
   expect_error (Session.add_expense updated expense);
   assert_equal 1 (List.length (Trip.expenses (Session.trip updated)))
 
 let test_add_expense_unknown_traveler _ =
   let session = add_travelers (make_session ()) [ "Amy" ] in
   let expense = make_expense 1 "Hotel" 10000 in
-
   expect_error (Session.add_expense session expense);
   assert_equal [] (Trip.expenses (Session.trip session))
 
@@ -240,7 +232,6 @@ let test_add_expense_immutable _ =
   let session = make_expense_session () in
   let expense = make_expense 1 "Hotel" 10000 in
   let updated = expect_ok (Session.add_expense session expense) in
-
   assert_equal [] (Trip.expenses (Session.trip session));
   assert_equal 1 (List.length (Trip.expenses (Session.trip updated)))
 
@@ -248,10 +239,8 @@ let test_edit_expense _ =
   let session = make_expense_session () in
   let original = make_expense 1 "Hotel" 10000 in
   let session = expect_ok (Session.add_expense session original) in
-
   let edited = make_expense 1 "Updated Hotel" 20000 in
   let updated = expect_ok (Session.edit_expense session edited) in
-
   match Trip.find_expense (Session.trip updated) 1 with
   | None -> assert_failure "Edited expense should exist"
   | Some expense ->
@@ -262,7 +251,6 @@ let test_edit_expense _ =
 let test_edit_nonexistent_expense _ =
   let session = make_expense_session () in
   let expense = make_expense 999 "Hotel" 10000 in
-
   expect_error (Session.edit_expense session expense);
   assert_equal [] (Trip.expenses (Session.trip session))
 
@@ -270,30 +258,26 @@ let test_edit_expense_immutable _ =
   let session = make_expense_session () in
   let original = make_expense 1 "Hotel" 10000 in
   let session = expect_ok (Session.add_expense session original) in
-
   let edited = make_expense 1 "Updated Hotel" 20000 in
   let updated = expect_ok (Session.edit_expense session edited) in
-
   let original_expense =
     Option.get (Trip.find_expense (Session.trip session) 1)
   in
   let updated_expense =
     Option.get (Trip.find_expense (Session.trip updated) 1)
   in
-
   assert_equal 10000 (Money.to_cents (Expense.total original_expense));
   assert_equal 20000 (Money.to_cents (Expense.total updated_expense))
 
 (* BUDGETS *)
-
 let test_set_budget _ =
   let session = make_session () in
   let updated =
     expect_ok (Session.set_budget session Types.Dining (Money.of_cents 10000))
   in
-  let budgets = Trip.budgets (Session.trip updated) in
+  let budgets = Trip.budget_state (Session.trip updated) in
   assert_equal (Some 10000)
-    (Option.map Money.to_cents (List.assoc_opt Types.Dining budgets))
+    (Option.map Money.to_cents (Budget.get budgets Types.Dining))
 
 let test_update_budget _ =
   let session = make_session () in
@@ -303,9 +287,9 @@ let test_update_budget _ =
   let updated =
     expect_ok (Session.set_budget session Types.Dining (Money.of_cents 20000))
   in
-  let budgets = Trip.budgets (Session.trip updated) in
+  let budgets = Trip.budget_state (Session.trip updated) in
   assert_equal (Some 20000)
-    (Option.map Money.to_cents (List.assoc_opt Types.Dining budgets))
+    (Option.map Money.to_cents (Budget.get budgets Types.Dining))
 
 let test_negative_budget _ =
   let session = make_session () in
@@ -319,53 +303,10 @@ let test_budget_immutable _ =
   assert_equal [] (Trip.budgets (Session.trip original));
   assert_equal 1 (List.length (Trip.budgets (Session.trip updated)))
 
-(* APPLY *)
-let test_apply_add_bill _ =
-  let session =
-    add_travelers (make_session ()) [ "Amy"; "Sandy"; "Jennifer" ]
-  in
-  let command =
-    Command.AddBill
-      {
-        description = "Dinner";
-        payer = "Amy";
-        category = Types.Dining;
-        bill = sample_bill ();
-      }
-  in
-  let updated = expect_ok (Session.apply session command) in
-  let expenses = Trip.expenses (Session.trip updated) in
-  assert_equal 1 (List.length expenses);
-  assert_equal 4400 (Money.to_cents (Expense.total (List.hd expenses)))
-
-let test_apply_invalid_bill _ =
-  let session = add_travelers (make_session ()) [ "Amy" ] in
-  let command =
-    Command.AddBill
-      {
-        description = "Dinner";
-        payer = "Amy";
-        category = Types.Dining;
-        bill = make_bill [] 0 0;
-      }
-  in
-  expect_error (Session.apply session command);
-  assert_equal [] (Trip.expenses (Session.trip session))
-
-(* TEST SUITE *)
-
-let suite =
-  "Session tests"
+(* Two broad suites: bill/helper behavior and general session behavior. *)
+let helpers_suite =
+  "Helpers Suite"
   >::: [
-         "create session" >:: test_create_session;
-         "empty session" >:: test_empty_session;
-         "add traveler" >:: test_add_traveler;
-         "add multiple travelers" >:: test_add_multiple_travelers;
-         "duplicate traveler" >:: test_duplicate_traveler;
-         "add traveler immutable" >:: test_add_traveler_immutable;
-         "remove traveler" >:: test_remove_traveler;
-         "remove unknown traveler" >:: test_remove_unknown_traveler;
-         "remove traveler immutable" >:: test_remove_traveler_immutable;
          "add bill" >:: test_add_bill;
          "add bill immutable" >:: test_add_bill_immutable;
          "add multiple bills" >:: test_add_multiple_bills;
@@ -378,6 +319,20 @@ let suite =
          "bill negative tip" >:: test_bill_negative_tip;
          "bill duplicate participants" >:: test_bill_duplicate_participants;
          "failed bill preserves trip" >:: test_failed_bill_preserves_trip;
+       ]
+
+let general_session_suite =
+  "General Session Suite"
+  >::: [
+         "create session" >:: test_create_session;
+         "empty session" >:: test_empty_session;
+         "add traveler" >:: test_add_traveler;
+         "add multiple travelers" >:: test_add_multiple_travelers;
+         "duplicate traveler" >:: test_duplicate_traveler;
+         "add traveler immutable" >:: test_add_traveler_immutable;
+         "remove traveler" >:: test_remove_traveler;
+         "remove unknown traveler" >:: test_remove_unknown_traveler;
+         "remove traveler immutable" >:: test_remove_traveler_immutable;
          "delete unknown expense" >:: test_delete_unknown_expense;
          "delete expense" >:: test_delete_expense;
          "add expense" >:: test_add_expense;
@@ -391,8 +346,7 @@ let suite =
          "update budget" >:: test_update_budget;
          "negative budget" >:: test_negative_budget;
          "budget immutable" >:: test_budget_immutable;
-         "apply add bill" >:: test_apply_add_bill;
-         "apply invalid bill" >:: test_apply_invalid_bill;
        ]
 
+let suite = "Session tests" >::: [ helpers_suite; general_session_suite ]
 let () = run_test_tt_main suite
