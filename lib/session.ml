@@ -42,6 +42,26 @@ let add_bill session description payer category bill =
 
 (* HELPERS *)
 
+(* helpers subsection: formatters for printing *)
+
+let format_shares expense =
+  Expense.shares expense
+  |> List.map (fun (person, amount) ->
+      Printf.sprintf "%s $%s" person (Money.to_string amount))
+  |> String.concat ", "
+
+let format_expense expense =
+  let shares = format_shares expense in
+
+  Printf.sprintf "%d: %s | Paid by %s | Total: $%s\n   Shares: %s"
+    (Expense.id expense)
+    (Expense.description expense)
+    (Expense.payer expense)
+    (Money.to_string (Expense.total expense))
+    shares
+
+(* formatters subsection end *)
+
 let calculate_shares session amount split_spec =
   let people =
     match split_spec with
@@ -117,7 +137,13 @@ let apply session command =
       action_with_message
         (delete_expense session id)
         ("Deleted expense: " ^ string_of_int id)
-  | Command.List_expenses -> Error "Command not yet implemented"
+  | Command.List_expenses ->
+      let expenses = Trip.expenses session.trip in
+      let message =
+        if expenses = [] then "No expenses yet."
+        else expenses |> List.map format_expense |> String.concat "\n"
+      in
+      Ok (session, message)
   | Command.Balances -> Error "Command not yet implemented"
   | Command.Settle -> Error "Command not yet implemented"
   | Command.Set_budget (category, amount) ->
