@@ -10,7 +10,7 @@ type payment = {
     strictly positive [amount] and a [payer] different from its [payee]. *)
 
 val greedy : Balance.t -> payment list
-(** [greedy b] is a list of payments that settles [b]. {!apply}[ b (greedy b)]
+(** [greedy b] is a list of payments that settles [b]. [apply b (greedy b)]
     leaves everyone at zero. The person who owes the most pays the person who is
     owed the most, as much as possible (the smaller of the two amounts). This
     rule repeats to choose payments until everyone is settled. Ties go to
@@ -19,15 +19,15 @@ val greedy : Balance.t -> payment list
 
 val payments : Balance.t -> payment list
 (** [payments b] is a list of payments that settles [b] using as few payments as
-    possible. {!apply}[ b (payments b)] leaves everyone at zero, and no list of
+    possible. [apply b (payments b)] leaves everyone at zero, and no list of
     payments that settles [b] is shorter. The people with a nonzero balance are
     split into as many separate groups as possible whose balances each sum to
-    zero, and each group is settled by {!greedy}. A group of [k] people needs
-    [k - 1] payments, so with [n] people owing or owed and [g] groups, there are
-    [n - g] payments. The search for groups takes exponential time, so if more
-    than 12 people in [b] have a nonzero balance, [payments b] is [greedy b]
-    instead, which is still a valid plan but may not have the fewest payments.
-*)
+    zero, and each group is settled by [greedy]. Because the search for groups
+    takes exponential time in [n], if more than 12 people in [b] have a nonzero
+    balance, then [payments b] is [greedy b] instead, which is still a valid
+    plan but may not always have the fewest payments. The result depends only on
+    [b], including its order, such that the same balances always give the same
+    payments. *)
 
 val apply : Balance.t -> payment list -> Balance.t
 (** [apply b payments] is the balances after every payment in [payments] is

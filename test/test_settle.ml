@@ -112,6 +112,68 @@ let greedy_tests =
       assert_valid_plan b payments );
   ]
 
+(* Settle.payments *)
+
+(** [payments_test name entries expected] checks that [Settle.payments] on the
+    balances [entries] gives exactly [expected], and that it is a valid plan. *)
+let payments_test name entries expected =
+  name >:: fun _ ->
+  let b = balances entries in
+  let payments = Settle.payments b in
+  assert_equal expected (triples payments) ~printer:print_triples;
+  assert_valid_plan b payments
+
+(** [a_to_e] is a situation where greedy needs 4 payments but 3 are enough:
+    {A, D, E} and {B, C} each sum to zero. *)
+let a_to_e = [ ("A", 600); ("B", 500); ("C", -500); ("D", -400); ("E", -200) ]
+
+(** [pairs k] is [2k] more people in [k] pairs who each owe each other $1.00,
+    named so they cannot clash with [a_to_e]. *)
+let pairs k =
+  List.concat
+    (List.init k (fun i ->
+         [ ("Owed" ^ string_of_int i, 100); ("Owes" ^ string_of_int i, -100) ]))
+
+let payments_tests =
+  [
+    payments_test "no people" [] [];
+    payments_test "everyone already settled"
+      [ ("Amy", 0); ("Sandy", 0); ("Kaylee", 0) ]
+      [];
+    (* Groups {A, D, E} and {B, C}; greedy settles each group. *)
+    payments_test "fewer payments than greedy" a_to_e
+      [ ("D", "A", 400); ("E", "A", 200); ("C", "B", 500) ];
+    (* Amy and Jen cancel exactly, and so do Sandy and Kaylee. *)
+    payments_test "pairs that cancel are settled directly"
+      [ ("Amy", 300); ("Sandy", 200); ("Kaylee", -200); ("Jen", -300) ]
+      [ ("Jen", "Amy", 300); ("Kaylee", "Sandy", 200) ];
+    payments_test "one group of three, no pair cancels"
+      [ ("Amy", 500); ("Sandy", -200); ("Kaylee", -300) ]
+      [ ("Kaylee", "Amy", 300); ("Sandy", "Amy", 200) ];
+    payments_test "one person owed by everyone"
+      [ ("Amy", 2000); ("Sandy", -1000); ("Kaylee", -1000) ]
+      [ ("Sandy", "Amy", 1000); ("Kaylee", "Amy", 1000) ];
+    payments_test "settled people are skipped"
+      [ ("Amy", 100); ("Sandy", 0); ("Kaylee", -100) ]
+      [ ("Kaylee", "Amy", 100) ];
+    ( "12 people are still searched" >:: fun _ ->
+      let entries =
+        a_to_e @ pairs 2 @ [ ("J", 300); ("K", -200); ("L", -100) ]
+      in
+      (* Groups: {A, D, E}, {B, C}, two pairs, {J, K, L}: 5 groups, so 12 - 5 =
+         7 payments. *)
+      let b = balances entries in
+      let payments = Settle.payments b in
+      assert_equal 7 (List.length payments) ~printer:string_of_int;
+      assert_valid_plan b payments );
+    ( "more than 12 people falls back to greedy" >:: fun _ ->
+      let b = balances (a_to_e @ pairs 4) in
+      assert_equal
+        (triples (Settle.greedy b))
+        (triples (Settle.payments b))
+        ~printer:print_triples );
+  ]
+
 (* apply, is_settled, to_string *)
 
 let pay payer payee cents : Settle.payment =
@@ -271,7 +333,27 @@ let property_tests =
               (fun (q : Settle.payment) -> q.payee <> p.payer)
               payments)
           payments);
+    property "payments settle everyone exactly" (fun trip ->
+        let b = balances_of trip in
+        Settle.is_settled (Settle.apply b (Settle.payments b)));
+    property "payments never uses more payments than greedy" (fun trip ->
+        let b = balances_of trip in
+        List.length (Settle.payments b) <= List.length (Settle.greedy b));
+    property "payments are positive and nobody both pays and receives"
+      (fun trip ->
+        let payments = Settle.payments (balances_of trip) in
+        List.for_all
+          (fun (p : Settle.payment) ->
+            Money.compare p.amount Money.zero > 0
+            && p.payer <> p.payee
+            && List.for_all
+                 (fun (q : Settle.payment) -> q.payee <> p.payer)
+                 payments)
+          payments);
   ]
 
-let tests = "settle tests" >::: greedy_tests @ misc_tests @ property_tests
+let tests =
+  "settle tests"
+  >::: greedy_tests @ payments_tests @ misc_tests @ property_tests
+
 let _ = run_test_tt_main tests

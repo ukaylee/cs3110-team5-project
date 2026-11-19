@@ -94,9 +94,7 @@ let is_zero_sum entries = Money.equal (sum_of entries) Money.zero
 (** [choices xs] is every way to pick some of the elements of [xs], as pairs
     [(picked, left)]. In each pair, every element of [xs] is in exactly one of
     [picked] and [left], and both keep the order of [xs]. There are [2^n] pairs
-    if [xs] has [n] elements, starting with [([], xs)]. For example,
-    [choices [1; 2]] is [[([], [1; 2]); ([1], [2]); ([2], [1]); ([1; 2], [])]].
-*)
+    if [xs] has [n] elements, starting with [([], xs)]. *)
 let rec choices = function
   | [] -> [ ([], []) ]
   | x :: rest ->
@@ -128,23 +126,20 @@ let rec best_groups entries =
       match List.find_opt cancels rest with
       | Some ((partner_person, _) as partner) ->
           (* Shortcut: two people who exactly cancel are always one group in
-             some best split, so there is no need to search. *)
+             some best split, so no need to search. *)
           let left =
             List.filter (fun (person, _) -> person <> partner_person) rest
           in
           [ first; partner ] :: best_groups left
       | None ->
-          (* [first] must be in some zero-sum group: try every set of companions
-             that makes one, and keep the best split of whoever is left. Picking
-             everyone always works, so there is a candidate. *)
           choices rest
           |> List.filter (fun (picked, _) -> is_zero_sum (first :: picked))
           |> List.map (fun (picked, left) ->
               (first :: picked) :: best_groups left)
           |> most_groups)
 
-(** [settle_group group] is {!greedy} on the balances in [group]. Requires:
-    [group] sums to zero and lists each person once. *)
+(** [settle_group group] is greedy on the balances in [group]. Requires: [group]
+    sums to zero and lists each person once. *)
 let settle_group group =
   match Balance.of_list group with
   | Ok balances -> greedy balances
