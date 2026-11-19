@@ -27,6 +27,6 @@ val net : t -> Types.person -> Money.t
 (** [net b p] is [p]'s balance in [b], or zero if [p] is not in [b]. *)
 
 val to_string : t -> string
-(** [to_string b] is header line text for the balances command, followed by one
-    line per person, such as ["  Amy is owed $12.00"], or
-    ["  Kaylee is settled up"]. Is a helpful message if [b] has no people. *)
+(** [to_string b] is the text printed by the [balances] command: one line per
+    person in the order of [b] describing how much money they owe or are owed.
+    Returns ["No travelers yet."] if [b] has no people. *)

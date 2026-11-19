@@ -121,10 +121,7 @@ let misc_tests =
           [ expense ~payer:"Amy" ~total:1500 [ ("Sandy", 1500) ] ]
       in
       assert_equal ~printer:Fun.id
-        "Balances:\n\
-        \  Amy is owed $15.00\n\
-        \  Sandy owes $15.00\n\
-        \  Kaylee is settled up"
+        "Amy is owed $15.00\nSandy owes $15.00\nKaylee is settled up"
         (Balance.to_string b) );
     ( "to_string with no travelers" >:: fun _ ->
       assert_equal ~printer:Fun.id "No travelers yet."
