@@ -59,11 +59,11 @@ val split_evenly : t -> int -> t list
 
 val allocate : t -> int list -> t list
 (** [allocate total weights] divides [total] in proportion to [weights] and
-    returns one share per weight, in the same order, summing exactly to
-    [total]. Each share is the floor of its exact proportion; remaining cents go
-    one each to the shares with the largest fractional remainders, ties broken
-    by earliest position. A weight of 0 always yields a share of {!zero}. Used
-    for percentages and for proportional tax and tip.
+    returns one share per weight, in the same order, summing exactly to [total].
+    Each share is the floor of its exact proportion; remaining cents go one each
+    to the shares with the largest fractional remainders, ties broken by
+    earliest position. A weight of 0 always yields a share of {!zero}. Used for
+    percentages and for proportional tax and tip.
 
     Requires [weights] nonempty, all nonnegative, with a positive sum, and
     [total >= zero].

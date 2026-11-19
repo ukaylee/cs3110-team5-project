@@ -1,2 +1,4 @@
 (library
- (name trip_tab))
+ (name trip_tab)
+ (wrapped false)
+)

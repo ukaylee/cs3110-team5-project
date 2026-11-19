@@ -1,5 +1,5 @@
 (test
- (name test_main)
+ (name test_money)
  (libraries trip_tab ounit2))
 
 (cram
