@@ -3,6 +3,7 @@ type t = { trip : Trip.t }
 let create trip = { trip }
 let trip session = session.trip
 
+(* ACTIONS *)
 let add_expense session expense =
   match Trip.add_expense session.trip expense with
   | Error msg -> Error msg
@@ -39,6 +40,8 @@ let add_bill session description payer category bill =
   | Error msg -> Error msg
   | Ok expense -> add_expense session expense
 
+(* HELPERS *)
+
 (** [convert_bill bill] converts a Command.bill into a Split.bill. *)
 let convert_bill (bill : Command.bill) : Split.bill =
   {
@@ -55,15 +58,41 @@ let convert_bill (bill : Command.bill) : Split.bill =
     tip = bill.tip;
   }
 
+let action_with_message result message =
+  match result with
+  | Ok updated_session -> Ok (updated_session, message)
+  | Error msg -> Error msg
+
 (** [apply session command] executes [command] on [session]. Returns the updated
     session and a success message, or an error message if the command cannot be
     completed. *)
 let apply session command =
   match command with
-  | Command.AddBill { description; payer; category; bill } -> (
+  | Command.Add_traveler person ->
+      action_with_message
+        (add_traveler session person)
+        ("Added traveler: " ^ person)
+  | Command.Remove_traveler person ->
+      action_with_message
+        (remove_traveler session person)
+        ("Removed traveler: " ^ person)
+  | Command.Add_expense (payer, category, amount, split_spec, description) ->
+      Error "Command not yet implemented"
+  | Command.AddBill { description; payer; category; bill } ->
       let split_bill = convert_bill bill in
-      match add_bill session description payer category split_bill with
-      | Ok updated_session -> Ok (updated_session, "Added bill: " ^ description)
-      | Error msg -> Error msg)
+      action_with_message
+        (add_bill session description payer category split_bill)
+        ("Added bill: " ^ description)
+  | Command.Edit_expense _ -> Error "Command not yet implemented"
+  | Command.Delete_expense id ->
+      action_with_message
+        (delete_expense session id)
+        ("Deleted expense: " ^ string_of_int id)
+  | Command.List_expenses -> Error "Command not yet implemented"
+  | Command.Balances -> Error "Command not yet implemented"
+  | Command.Settle -> Error "Command not yet implemented"
+  | Command.Set_budget (category, amount) ->
+      action_with_message (set_budget session category amount) "Budget updated"
+  | Command.Report -> Error "Command not yet implemented"
+  | Command.Help -> Error "Command not yet implemented"
   | Command.Quit -> Ok (session, "Goodbye!")
-(*need to add more command handlers *)
