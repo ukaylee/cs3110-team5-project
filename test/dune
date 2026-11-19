@@ -1,7 +1,9 @@
 (test
  (name test_money)
  (libraries trip_tab ounit2))
-
+(test
+ (name test_command)
+ (libraries trip_tab ounit2))
 (cram
  (deps
   ../bin/main.exe
