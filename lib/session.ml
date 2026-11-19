@@ -39,13 +39,31 @@ let add_bill session description payer category bill =
   | Error msg -> Error msg
   | Ok expense -> add_expense session expense
 
+(** [convert_bill bill] converts a Command.bill into a Split.bill. *)
+let convert_bill (bill : Command.bill) : Split.bill =
+  {
+    items =
+      List.map
+        (fun (item : Command.bill_item) ->
+          {
+            Split.name = item.name;
+            price = item.price;
+            participants = item.participants;
+          })
+        bill.items;
+    tax = bill.tax;
+    tip = bill.tip;
+  }
+
 (** [apply session command] executes [command] on [session]. Returns the updated
     session and a success message, or an error message if the command cannot be
     completed. *)
 let apply session command =
   match command with
   | Command.AddBill { description; payer; category; bill } -> (
-      match add_bill session description payer category bill with
+      let split_bill = convert_bill bill in
+      match add_bill session description payer category split_bill with
       | Ok updated_session -> Ok (updated_session, "Added bill: " ^ description)
       | Error msg -> Error msg)
   | Command.Quit -> Ok (session, "Goodbye!")
+(*need to add more command handlers *)
