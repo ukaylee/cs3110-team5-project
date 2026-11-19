@@ -73,11 +73,11 @@ let format_dollars amount = "$" ^ Money.to_string amount
 let format_line (person, balance) =
   let sign = Money.compare balance Money.zero in
   if sign > 0 then
-    Printf.sprintf "  %s is owed %s" person (format_dollars balance)
+    Printf.sprintf "%s is owed %s" person (format_dollars balance)
   else if sign < 0 then
-    Printf.sprintf "  %s owes %s" person (format_dollars (Money.neg balance))
-  else Printf.sprintf "  %s is settled up" person
+    Printf.sprintf "%s owes %s" person (format_dollars (Money.neg balance))
+  else Printf.sprintf "%s is settled up" person
 
 let to_string = function
   | [] -> "No travelers yet."
-  | balances -> String.concat "\n" ("Balances:" :: List.map format_line balances)
+  | balances -> String.concat "\n" (List.map format_line balances)
