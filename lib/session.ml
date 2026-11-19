@@ -42,6 +42,24 @@ let add_bill session description payer category bill =
 
 (* HELPERS *)
 
+let calculate_shares session amount split_spec =
+  let people =
+    match split_spec with
+    (*split spec is the way people wanted to split it*)
+    | Command.Equal_all -> Trip.travelers session.trip
+    | Command.Equal people -> people
+    | Command.Exact _ -> []
+  in
+  match split_spec with
+  | Command.Exact shares -> Ok shares
+  | Command.Equal_all | Command.Equal _ ->
+      if people = [] then Error "Cannot split an expense among zero travelers."
+      else if Money.compare amount Money.zero < 0 then
+        Error "Cannot split a negative expense."
+      else
+        let amounts = Money.split_evenly amount (List.length people) in
+        Ok (List.combine people amounts)
+
 (** [convert_bill bill] converts a Command.bill into a Split.bill. *)
 let convert_bill (bill : Command.bill) : Split.bill =
   {
@@ -76,8 +94,19 @@ let apply session command =
       action_with_message
         (remove_traveler session person)
         ("Removed traveler: " ^ person)
-  | Command.Add_expense (payer, category, amount, split_spec, description) ->
-      Error "Command not yet implemented"
+  | Command.Add_expense (payer, category, amount, split_spec, description) -> (
+      let id = Trip.next_id session.trip in
+      match calculate_shares session amount split_spec with
+      | Error msg -> Error msg
+      | Ok shares -> (
+          match
+            Expense.make ~id ~description ~payer ~category ~total:amount ~shares
+          with
+          | Error msg -> Error msg
+          | Ok expense ->
+              action_with_message
+                (add_expense session expense)
+                ("Added expense: " ^ description)))
   | Command.AddBill { description; payer; category; bill } ->
       let split_bill = convert_bill bill in
       action_with_message
