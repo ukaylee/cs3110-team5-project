@@ -17,7 +17,7 @@ let test_remove_traveler _ =
   | _ -> assert_failure "Expected Remove_traveler"
 
 let test_add_expense_equal_all _ =
-  match parse "add-expense Amy dining 60.00 equal all Dinner" with
+  match parse "add-expense Amy dining 60.00 equal all | Dinner" with
   | Command.Add_expense
       ("Amy", Types.Dining, amount, Command.Equal_all, "Dinner") ->
       assert_equal 6000 (Money.to_cents amount)
@@ -25,7 +25,7 @@ let test_add_expense_equal_all _ =
 
 let test_add_expense_exact _ =
   match
-    parse "add-expense Amy dining 60.00 exact Amy=20.00 Sandy=40.00 Dinner"
+    parse "add-expense Amy dining 60.00 exact Amy=20.00 Sandy=40.00 | Dinner"
   with
   | Command.Add_expense
       ("Amy", Types.Dining, amount, Command.Exact shares, "Dinner") ->
@@ -36,6 +36,16 @@ let test_add_expense_exact _ =
            (fun (person, money) -> (person, Money.to_cents money))
            shares)
   | _ -> assert_failure "Expected Add_expense with Exact split"
+
+let test_add_expense_equal_people _ =
+  match
+    parse "add-expense Amy dining 40.00 equal Sandy Jennifer | Group dinner"
+  with
+  | Command.Add_expense
+      ("Amy", Types.Dining, amount, Command.Equal people, "Group dinner") ->
+      assert_equal 4000 (Money.to_cents amount);
+      assert_equal [ "Sandy"; "Jennifer" ] people
+  | _ -> assert_failure "Expected equal split with description"
 
 let test_add_bill _ =
   match
@@ -97,7 +107,7 @@ let test_invalid_command _ =
   | Ok _ -> assert_failure "Expected an error for invalid command"
 
 let test_invalid_money _ =
-  match Command.parse "add-expense Amy dining abc equal all Dinner" with
+  match Command.parse "add-expense Amy dining abc equal all | Dinner" with
   | Error _ -> ()
   | Ok _ -> assert_failure "Expected an error for invalid amount"
 
@@ -106,10 +116,23 @@ let test_invalid_id _ =
   | Error _ -> ()
   | Ok _ -> assert_failure "Expected an error for invalid ID"
 
+let test_missing_separator _ =
+  match
+    Command.parse
+      "add-expense Amy dining 40.00 equal Sandy Jennifer Group dinner"
+  with
+  | Error _ -> ()
+  | Ok _ -> assert_failure "Expected an error when separator is missing"
+
+let test_missing_description _ =
+  match Command.parse "add-expense Amy dining 40.00 equal all |" with
+  | Error _ -> ()
+  | Ok _ -> assert_failure "Expected an error for missing description"
+
 let test_add_expense_exact_with_description _ =
   match
     parse
-      "add-expense Amy dining 60.00 exact Amy=20 Sandy=15 Jennifer=25 Dinner"
+      "add-expense Amy dining 60.00 exact Amy=20 Sandy=15 Jennifer=25 | Dinner"
   with
   | Command.Add_expense
       ("Amy", Types.Dining, amount, Command.Exact shares, description) ->
@@ -129,6 +152,7 @@ let suite =
          "remove traveler" >:: test_remove_traveler;
          "equal all expense" >:: test_add_expense_equal_all;
          "exact expense" >:: test_add_expense_exact;
+         "equal people expense" >:: test_add_expense_equal_people;
          "add bill" >:: test_add_bill;
          "delete expense" >:: test_delete_expense;
          "edit expense" >:: test_edit_expense;
@@ -139,6 +163,8 @@ let suite =
          "invalid command" >:: test_invalid_command;
          "invalid money" >:: test_invalid_money;
          "invalid ID" >:: test_invalid_id;
+         "missing separator" >:: test_missing_separator;
+         "missing description" >:: test_missing_description;
          "add_expense_exact_with_description"
          >:: test_add_expense_exact_with_description;
        ]

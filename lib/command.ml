@@ -1,4 +1,3 @@
-
 (** Commands entered by the user in the terminal. *)
 
 type split_spec =
@@ -6,25 +5,24 @@ type split_spec =
   | Equal of Types.person list
   | Exact of (Types.person * Money.t) list
 
-(** Parsed item in an itemized bill. *)
 type bill_item = {
   name : string;
   price : Money.t;
   participants : Types.person list;
 }
+(** Parsed item in an itemized bill. *)
 
-(** Parsed itemized bill. *)
 type bill = {
   items : bill_item list;
   tax : Money.t;
   tip : Money.t;
 }
+(** Parsed itemized bill. *)
 
 type t =
   | Add_traveler of Types.person
   | Remove_traveler of Types.person
-  | Add_expense of
-      Types.person * Types.category * Money.t * split_spec * string
+  | Add_expense of Types.person * Types.category * Money.t * split_spec * string
   | Add_bill of Types.person * Types.category * bill * string
   | Edit_expense of int
   | Delete_expense of int
@@ -52,23 +50,18 @@ let parse_category s =
 let parse_id s =
   try
     let id = int_of_string s in
-    if id <= 0 then Error "Expense ID must be positive."
-    else Ok id
-  with Failure _ ->
-    Error ("Invalid expense ID: " ^ s)
+    if id <= 0 then Error "Expense ID must be positive." else Ok id
+  with Failure _ -> Error ("Invalid expense ID: " ^ s)
 
 (** Split a string at its first occurrence of a character. *)
 let split_first delimiter s =
   match String.index_opt s delimiter with
   | None -> (s, "")
-  | Some i ->
-      ( String.sub s 0 i,
-        String.sub s (i + 1) (String.length s - i - 1) )
+  | Some i -> (String.sub s 0 i, String.sub s (i + 1) (String.length s - i - 1))
 
 (** Split a string into nonempty words. *)
 let clean_words s =
-  String.split_on_char ' ' (String.trim s)
-  |> List.filter (fun x -> x <> "")
+  String.split_on_char ' ' (String.trim s) |> List.filter (fun x -> x <> "")
 
 (** Join words into a string. *)
 let join_words = String.concat " "
@@ -85,106 +78,91 @@ let parse_assignment s =
 
 (** Parse a split specification.
 
-    Supported formats:
-    equal all
-    equal Amy Sandy
-    exact Amy=20.00 Sandy=15.00
-*)
+    Supported formats: equal all equal Amy Sandy exact Amy=20.00 Sandy=15.00 *)
 let parse_split tokens =
   match tokens with
-  | "equal" :: "all" :: rest ->
-      Ok (Equal_all, rest)
-
+  | "equal" :: "all" :: rest -> Ok (Equal_all, rest)
   | "equal" :: rest ->
       let rec take_people acc = function
-        | person :: remaining
-          when not (String.contains person '=') ->
-            take_people (person :: acc) remaining
-        | remaining ->
+        | person :: remaining -> take_people (person :: acc) remaining
+        | [] ->
             if acc = [] then
               Error "Please specify at least one traveler for the split."
-            else
-              Ok (Equal (List.rev acc), remaining)
+            else Ok (Equal (List.rev acc), [])
       in
       take_people [] rest
-
   | "exact" :: rest ->
       let rec take_assignments acc = function
-        | assignment :: remaining
-          when String.contains assignment '=' ->
-            (match parse_assignment assignment with
-            | Ok value ->
-                take_assignments (value :: acc) remaining
-            | Error msg ->
-                Error msg)
-        | remaining ->
-            if acc = [] then
-              Error "Please provide exact split assignments."
-            else
-              Ok (Exact (List.rev acc), remaining)
+        | assignment :: remaining -> (
+            match parse_assignment assignment with
+            | Ok value -> take_assignments (value :: acc) remaining
+            | Error msg -> Error msg)
+        | [] ->
+            if acc = [] then Error "Please provide exact split assignments."
+            else Ok (Exact (List.rev acc), [])
       in
       take_assignments [] rest
-
   | _ ->
       Error
-        "Expected split format: equal all, equal NAME..., or exact NAME=AMOUNT..."
+        "Expected split format: equal all, equal NAME..., or exact \
+         NAME=AMOUNT..."
 
 (** Parse an add-expense command.
 
-    add-expense PAYER CATEGORY AMOUNT SPLIT DESCRIPTION
-*)
+    add-expense PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION *)
 let parse_add_expense tokens =
+  let rec split_at_pipe acc = function
+    | [] -> Error "Please separate the split and description with '|'."
+    | "|" :: description ->
+        if List.mem "|" description then
+          Error "Please use only one '|' separator."
+        else Ok (List.rev acc, description)
+    | token :: rest -> split_at_pipe (token :: acc) rest
+  in
+
   match tokens with
-  | payer :: category :: amount :: split_tokens ->
-      (match parse_category category, parse_money amount with
-      | Error msg, _ | _, Error msg ->
-          Error msg
-
-      | Ok category, Ok amount ->
-          (match parse_split split_tokens with
-          | Error msg ->
-              Error msg
-
-          | Ok (split, description_words) ->
+  | payer :: category :: amount :: rest -> (
+      match (parse_category category, parse_money amount) with
+      | Error msg, _ | _, Error msg -> Error msg
+      | Ok category, Ok amount -> (
+          match split_at_pipe [] rest with
+          | Error msg -> Error msg
+          | Ok (split_tokens, description_words) -> (
               let description = join_words description_words in
               if description = "" then
                 Error "Please provide an expense description."
               else
-                Ok
-                  (Add_expense
-                     (payer, category, amount, split, description))))
-
-  | _ ->
-      Error
-        "Usage: add-expense PAYER CATEGORY AMOUNT SPLIT DESCRIPTION"
+                match parse_split split_tokens with
+                | Error msg -> Error msg
+                | Ok (split, leftover) ->
+                    if leftover <> [] then
+                      Error "Unexpected tokens in split specification."
+                    else
+                      Ok
+                        (Add_expense
+                           (payer, category, amount, split, description)))))
+  | _ -> Error "Usage: add-expense PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION"
 
 (** Parse a bill item.
 
-    Format:
-    ITEM NAME PRICE PERSON1, PERSON2
+    Format: ITEM NAME PRICE PERSON1, PERSON2
 
-    The item name can contain multiple words.
-    Participants are separated by commas.
-*)
+    The item name can contain multiple words. Participants are separated by
+    commas. *)
 let parse_bill_item s =
   let words = clean_words s in
 
   let rec search prefix remaining =
     match remaining with
-    | [] ->
-        Error "Missing item price."
-
-    | price_word :: rest ->
-        (match parse_money price_word with
-        | Error _ ->
-            search (prefix @ [ price_word ]) rest
-
+    | [] -> Error "Missing item price."
+    | price_word :: rest -> (
+        match parse_money price_word with
+        | Error _ -> search (prefix @ [ price_word ]) rest
         | Ok price ->
             let name = join_words prefix in
             let participant_text = join_words rest in
 
-            if name = "" then
-              Error "Please provide an item name."
+            if name = "" then Error "Please provide an item name."
             else if participant_text = "" then
               Error "Please specify item participants."
             else
@@ -195,87 +173,61 @@ let parse_bill_item s =
 
               if List.exists (fun p -> p = "") participants then
                 Error "Invalid participant list."
-              else
-                Ok
-                  {
-                    name;
-                    price;
-                    participants;
-                  })
+              else Ok { name; price; participants })
   in
 
   search [] words
 
 (** Parse an add-bill command.
 
-    add-bill PAYER CATEGORY tax=X tip=Y
-      | DESCRIPTION
-      | ITEM PRICE PEOPLE
-      | ITEM PRICE PEOPLE
-*)
+    add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM PRICE PEOPLE | ITEM
+    PRICE PEOPLE *)
 let parse_add_bill input =
-  let sections =
-    String.split_on_char '|' input
-    |> List.map String.trim
-  in
+  let sections = String.split_on_char '|' input |> List.map String.trim in
 
   match sections with
-  | header :: description :: item_sections
-    when item_sections <> [] ->
-      (match clean_words header with
-      | [ "add-bill"; payer; category; tax_arg; tip_arg ] ->
+  | header :: description :: item_sections when item_sections <> [] -> (
+      match clean_words header with
+      | [ "add-bill"; payer; category; tax_arg; tip_arg ] -> (
           let tax_name, tax_amount = split_first '=' tax_arg in
           let tip_name, tip_amount = split_first '=' tip_arg in
 
           if tax_name <> "tax" || tip_name <> "tip" then
             Error "Expected tax=X and tip=Y."
           else
-            (match
-               parse_category category,
-               parse_money tax_amount,
-               parse_money tip_amount
-             with
-            | Error msg, _, _
-            | _, Error msg, _
-            | _, _, Error msg ->
-                Error msg
-
-            | Ok category, Ok tax, Ok tip ->
+            match
+              ( parse_category category,
+                parse_money tax_amount,
+                parse_money tip_amount )
+            with
+            | Error msg, _, _ | _, Error msg, _ | _, _, Error msg -> Error msg
+            | Ok category, Ok tax, Ok tip -> (
                 let rec parse_items acc = function
-                  | [] ->
-                      Ok (List.rev acc)
-
-                  | section :: rest ->
-                      (match parse_bill_item section with
-                      | Error msg ->
-                          Error msg
-
-                      | Ok item ->
-                          parse_items (item :: acc) rest)
+                  | [] -> Ok (List.rev acc)
+                  | section :: rest -> (
+                      match parse_bill_item section with
+                      | Error msg -> Error msg
+                      | Ok item -> parse_items (item :: acc) rest)
                 in
 
-                (match parse_items [] item_sections with
-                | Error msg ->
-                    Error msg
-
+                match parse_items [] item_sections with
+                | Error msg -> Error msg
                 | Ok items ->
                     if description = "" then
                       Error "Please provide a bill description."
                     else
                       Ok
                         (Add_bill
-                           ( payer,
-                             category,
-                             { items; tax; tip },
-                             description ))))
-
+                           (payer, category, { items; tax; tip }, description)))
+          )
       | _ ->
           Error
-            "Usage: add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM PRICE PEOPLE")
-
+            "Usage: add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM \
+             PRICE PEOPLE")
   | _ ->
       Error
-        "Usage: add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM PRICE PEOPLE"
+        "Usage: add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM PRICE \
+         PEOPLE"
 
 (** Parse a terminal command. *)
 let parse input =
@@ -283,56 +235,27 @@ let parse input =
   let tokens = clean_words input in
 
   match tokens with
-  | [] ->
-      Error "Please enter a command."
-
-  | [ "help" ] ->
-      Ok Help
-
-  | [ "quit" ] ->
-      Ok Quit
-
-  | [ "expenses" ] ->
-      Ok List_expenses
-
-  | [ "balances" ] ->
-      Ok Balances
-
-  | [ "settle" ] ->
-      Ok Settle
-
-  | [ "report" ] ->
-      Ok Report
-
-  | "add-traveler" :: [ person ] ->
-      Ok (Add_traveler person)
-
-  | "remove-traveler" :: [ person ] ->
-      Ok (Remove_traveler person)
-
-  | "edit-expense" :: [ id ] ->
-      (match parse_id id with
+  | [] -> Error "Please enter a command."
+  | [ "help" ] -> Ok Help
+  | [ "quit" ] -> Ok Quit
+  | [ "expenses" ] -> Ok List_expenses
+  | [ "balances" ] -> Ok Balances
+  | [ "settle" ] -> Ok Settle
+  | [ "report" ] -> Ok Report
+  | "add-traveler" :: [ person ] -> Ok (Add_traveler person)
+  | "remove-traveler" :: [ person ] -> Ok (Remove_traveler person)
+  | "edit-expense" :: [ id ] -> (
+      match parse_id id with
       | Ok id -> Ok (Edit_expense id)
       | Error msg -> Error msg)
-
-  | "delete-expense" :: [ id ] ->
-      (match parse_id id with
+  | "delete-expense" :: [ id ] -> (
+      match parse_id id with
       | Ok id -> Ok (Delete_expense id)
       | Error msg -> Error msg)
-
-  | [ "budget"; category; amount ] ->
-      (match parse_category category, parse_money amount with
-      | Ok category, Ok amount ->
-          Ok (Set_budget (category, amount))
-      | Error msg, _ | _, Error msg ->
-          Error msg)
-
-  | "add-expense" :: rest ->
-      parse_add_expense rest
-
-  | "add-bill" :: _ ->
-      parse_add_bill input
-
-  | _ ->
-      Error
-        "Unrecognized command. Type 'help' for available commands."
+  | [ "budget"; category; amount ] -> (
+      match (parse_category category, parse_money amount) with
+      | Ok category, Ok amount -> Ok (Set_budget (category, amount))
+      | Error msg, _ | _, Error msg -> Error msg)
+  | "add-expense" :: rest -> parse_add_expense rest
+  | "add-bill" :: _ -> parse_add_bill input
+  | _ -> Error "Unrecognized command. Type 'help' for available commands."
