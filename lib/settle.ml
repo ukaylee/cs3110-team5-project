@@ -1,6 +1,4 @@
-(** Turns balances into transfers with an optimized settlement order. *)
-
-(** Settling up: turning net balances into payments. *)
+(** Turns net balances into payments with an optimized settlement order. *)
 
 type payment = {
   payer : Types.person;

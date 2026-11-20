@@ -1,4 +1,4 @@
-(** Net balance of expenses.*)
+(** Net balance of expenses. *)
 
 type t = (Types.person * Money.t) list
 (** AF: [[(p1, m1); ...; (pn, mn)]] represents the balances in which person [pi]

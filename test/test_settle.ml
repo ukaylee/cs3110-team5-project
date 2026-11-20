@@ -92,7 +92,7 @@ let greedy_tests =
       [ ("Kaylee", "Amy", 100) ];
     (* Worked by hand: C pays A 5 (A has 1 left); D pays B 4 (B has 1 left); A
        and B tie at 1, so E pays A first, then B. The best plan uses 3 payments
-       (C->B, D->A, E->A); Step 4 finds that one. *)
+       (C->B, D->A, E->A); Settle.payments finds that one. *)
     greedy_test "greedy is not always fewest"
       [ ("A", 600); ("B", 500); ("C", -500); ("D", -400); ("E", -200) ]
       [ ("C", "A", 500); ("D", "B", 400); ("E", "A", 100); ("E", "B", 100) ];
