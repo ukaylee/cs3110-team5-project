@@ -140,8 +140,6 @@ let apply session command =
         (add_bill session description payer category split_bill)
         ("Added bill: " ^ description)
   | Command.Edit_expense { id; payer; category; amount; split; description } ->
-      (*may have to change name of split. this is basically the field she would
-        put the split_spec in tho*)
       action_with_message
         (edit_split_expense session id payer category amount split description)
         ("Edited expense: " ^ string_of_int id)
