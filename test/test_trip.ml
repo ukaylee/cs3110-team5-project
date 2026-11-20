@@ -273,7 +273,7 @@ let test_set_budget _ =
 
 let test_set_budget_replaces _ =
   let t = trip_with [ "Amy" ] in
-  let t = ok (Trip.set_budget t Types.Dining (cents 7000)) in
+  let t = ok (Trip.set_budget t Types.Dining (cents 7000)) in 
   let t = ok (Trip.set_budget t Types.Dining (cents 5000)) in
   assert_equal ~printer:string_of_strings [ "dining=50.00" ] (budgets_str t)
 

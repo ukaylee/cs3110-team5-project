@@ -1,6 +1,6 @@
 (tests
- (names test_main test_budget_report test_money test_command test_split test_balance test_settle test_trip test_apply test_session)
-(libraries trip_tab ounit2 qcheck-core qcheck-ounit))
+ (names test_main test_budget test_report test_budget_complex test_report_complex test_money test_command test_balance test_settle)
+ (libraries trip_tab ounit2 qcheck-core qcheck-ounit))
 
 (cram
  (deps
