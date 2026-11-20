@@ -80,6 +80,49 @@ let test_zero_budget_status _ =
   assert_equal "within:0.00" (status budgets Types.Lodging Money.zero);
   assert_equal "over:0.01" (status budgets Types.Lodging (Money.of_cents 1))
 
+(** [test_independent_category_updates _] checks that repeated updates to one
+    category preserve limits and statuses in other categories. *)
+let test_independent_category_updates _ =
+  let original = Budget.empty in
+  let dining = set original Types.Dining (money "100.00") in
+  let both = set dining Types.Travel (money "50.00") in
+  let updated = set both Types.Dining (money "200.00") in
+  assert_equal None (Budget.get original Types.Dining);
+  assert_equal "100.00"
+    (Money.to_string (Option.get (Budget.get dining Types.Dining)));
+  assert_equal "50.00"
+    (Money.to_string (Option.get (Budget.get updated Types.Travel)));
+  assert_equal "within:150.00"
+    (status updated Types.Dining (money "50.00"));
+  assert_equal "urgent:0.00"
+    (status updated Types.Travel (money "50.00"))
+
+(** [test_cent_thresholds _] checks warning boundaries for a limit whose
+    thresholds include fractional cents and must be represented in cents. *)
+let test_cent_thresholds _ =
+  let budgets = set Budget.empty Types.Other (money "1.01") in
+  assert_equal "within:0.16" (status budgets Types.Other (money "0.85"));
+  assert_equal "preliminary:0.15"
+    (status budgets Types.Other (money "0.86"));
+  assert_equal "preliminary:0.06"
+    (status budgets Types.Other (money "0.95"));
+  assert_equal "urgent:0.05" (status budgets Types.Other (money "0.96"))
+
+(** [test_rejected_update_preserves_all_categories _] checks that rejecting a
+    negative update does not disturb another configured category. *)
+let test_rejected_update_preserves_all_categories _ =
+  let budgets =
+    set (set Budget.empty Types.Dining (money "30.00")) Types.Travel
+      (money "40.00")
+  in
+  (match Budget.set budgets Types.Dining (Money.of_cents (-1)) with
+  | Error _ -> ()
+  | Ok _ -> assert_failure "negative budget accepted");
+  assert_equal "30.00"
+    (Money.to_string (Option.get (Budget.get budgets Types.Dining)));
+  assert_equal "40.00"
+    (Money.to_string (Option.get (Budget.get budgets Types.Travel)))
+
 let suite =
   "Budget tests"
   >::: [
@@ -88,6 +131,10 @@ let suite =
          "zero and negative budgets" >:: test_zero_and_negative_budgets;
          "warning thresholds" >:: test_warning_boundaries;
          "zero-budget statuses" >:: test_zero_budget_status;
+         "independent category updates" >:: test_independent_category_updates;
+         "cent-level thresholds" >:: test_cent_thresholds;
+         "rejected update preserves categories"
+         >:: test_rejected_update_preserves_all_categories;
        ]
 
 let () = run_test_tt_main suite

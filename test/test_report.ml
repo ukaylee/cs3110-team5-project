@@ -158,6 +158,65 @@ let test_empty_report _ =
   in
   assert_equal expected report
 
+(** [test_report_separates_payers_from_shares _] checks that the person section
+    reports assigned shares rather than the amounts paid upfront. *)
+let test_report_separates_payers_from_shares _ =
+  let expenses =
+    [
+      expense ~id:1 ~description:"Dinner" ~payer:"Amy"
+        ~category:Types.Dining ~total:(money "30.00")
+        ~shares:[ ("Amy", money "10.00"); ("Sandy", money "20.00") ];
+      expense ~id:2 ~description:"Taxi" ~payer:"Sandy"
+        ~category:Types.Travel ~total:(money "12.00")
+        ~shares:[ ("Amy", money "7.00"); ("Sandy", money "5.00") ];
+    ]
+  in
+  let report = Report.format_report [ "Sandy"; "Amy"; "Jennifer" ] expenses Budget.empty in
+  let expected =
+    String.concat "\n"
+      [
+        "EXPENSE REPORT";
+        "Spending by category: ";
+        "| travel: spending ~ $12.00 [no budget set for category]";
+        "| lodging: spending ~ $0.00 [no budget set for category]";
+        "| dining: spending ~ $30.00 [no budget set for category]";
+        "| shopping: spending ~ $0.00 [no budget set for category]";
+        "| other: spending ~ $0.00 [no budget set for category]";
+        "";
+        "Spending by person: ";
+        "| Sandy: $25.00";
+        "| Amy: $17.00";
+        "| Jennifer: $0.00";
+      ]
+  in
+  assert_equal expected report
+
+(** [test_report_zero_budget _] checks that a zero-dollar budget is shown as a
+    configured budget and that spending one cent exceeds it. *)
+let test_report_zero_budget _ =
+  let budgets = set Budget.empty Types.Other Money.zero in
+  let expense =
+    expense ~id:1 ~description:"Fee" ~payer:"Amy" ~category:Types.Other
+      ~total:(money "0.01") ~shares:[ ("Amy", money "0.01") ]
+  in
+  let report = Report.format_report [ "Amy" ] [ expense ] budgets in
+  let expected =
+    String.concat "\n"
+      [
+        "EXPENSE REPORT";
+        "Spending by category: ";
+        "| travel: spending ~ $0.00 [no budget set for category]";
+        "| lodging: spending ~ $0.00 [no budget set for category]";
+        "| dining: spending ~ $0.00 [no budget set for category]";
+        "| shopping: spending ~ $0.00 [no budget set for category]";
+        "| other: spending ~ $0.01 [OVERBUDGET by $0.01]";
+        "";
+        "Spending by person: ";
+        "| Amy: $0.01";
+      ]
+  in
+  assert_equal expected report
+
 let suite =
   "Report tests"
   >::: [
@@ -166,6 +225,9 @@ let suite =
          "all budget statuses in report"
          >:: test_report_shows_each_budget_status;
          "empty report" >:: test_empty_report;
+         "report uses shares and traveler order"
+         >:: test_report_separates_payers_from_shares;
+         "zero budget report" >:: test_report_zero_budget;
        ]
 
 let () = run_test_tt_main suite
