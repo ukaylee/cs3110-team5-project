@@ -154,16 +154,17 @@ let apply session command =
         else expenses |> List.map format_expense |> String.concat "\n"
       in
       Ok (session, message)
-  | Command.Balances -> Error "Command not yet implemented"
-  (* when amy pushes balances: | Command.Balances -> let travelers =
-     Trip.travelers session.trip in let expenses = Trip.expenses session.trip in
-     let balances = Balance.compute travelers expenses in Ok (session,
-     Balance.to_string balances) *)
-  | Command.Settle -> Error "Command not yet implemented"
-  (* when amy pushes settle: | Command.Settle -> let travelers = Trip.travelers
-     session.trip in let expenses = Trip.expenses session.trip in let balances =
-     Balance.compute travelers expenses in let payments = Settle.payments
-     balances in Ok (session, Settle.to_string payments) *)
+  | Command.Balances ->
+      let travelers = Trip.travelers session.trip in
+      let expenses = Trip.expenses session.trip in
+      let balances = Balance.compute travelers expenses in
+      Ok (session, Balance.to_string balances)
+  | Command.Settle ->
+      let travelers = Trip.travelers session.trip in
+      let expenses = Trip.expenses session.trip in
+      let balances = Balance.compute travelers expenses in
+      let payments = Settle.payments balances in
+      Ok (session, Settle.to_string payments)
   | Command.Set_budget (category, amount) ->
       action_with_message (set_budget session category amount) "Budget updated"
   | Command.Report ->

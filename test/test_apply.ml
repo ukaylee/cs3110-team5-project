@@ -299,9 +299,6 @@ let test_apply_list_expenses _ =
     (Trip.expenses (Session.trip updated))
 
 (* APPLY: balances and settlements *)
-(* TODO (waiting on Amy): Integrate the Balance and Settle modules/handlers
-   in Session.apply, then run and verify the three tests below. Until then,
-   these tests are expected to fail against the placeholder handlers. *)
 let test_apply_balances _ =
   let session = apply_expense_session () in
   let _, message = apply_ok session Command.Balances in
