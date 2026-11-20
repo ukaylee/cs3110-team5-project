@@ -53,15 +53,14 @@ let test_add_bill _ =
       "add-bill Amy dining tax=5.00 tip=9.00 | Dinner at Pokebowl | Chicken \
        Pasta 18.00 Amy | Garlic Bread 8.00 Amy, Sandy"
   with
-  | Command.AddBill
-      { payer; category; bill; description } ->
+  | Command.AddBill { payer; category; bill; description } -> (
       assert_equal "Amy" payer;
       assert_equal Types.Dining category;
       assert_equal "Dinner at Pokebowl" description;
       assert_equal 500 (Money.to_cents bill.tax);
       assert_equal 900 (Money.to_cents bill.tip);
       assert_equal 2 (List.length bill.items);
-      (match bill.items with
+      match bill.items with
       | [ first; second ] ->
           assert_equal "Chicken Pasta" first.name;
           assert_equal 1800 (Money.to_cents first.price);
@@ -79,9 +78,17 @@ let test_delete_expense _ =
   | _ -> assert_failure "Expected Delete_expense"
 
 let test_edit_expense _ =
-  match parse "edit-expense 2" with
-  | Command.Edit_expense 2 -> ()
-  | _ -> assert_failure "Expected Edit_expense"
+  match
+    parse "edit-expense 2 Amy dining 60.00 equal all | Dinner with friends"
+  with
+  | Command.Edit_expense { id; payer; category; amount; split; description } ->
+      assert_equal 2 id;
+      assert_equal "Amy" payer;
+      assert_equal Types.Dining category;
+      assert_equal 6000 (Money.to_cents amount);
+      assert_equal Command.Equal_all split;
+      assert_equal "Dinner with friends" description
+  | _ -> assert_failure "Expected Edit_expense with updated fields"
 
 let test_budget _ =
   match parse "budget dining 70.00" with
@@ -131,6 +138,30 @@ let test_missing_description _ =
   match Command.parse "add-expense Amy dining 40.00 equal all |" with
   | Error _ -> ()
   | Ok _ -> assert_failure "Expected an error for missing description"
+let test_edit_expense_exact _ =
+  match
+    parse
+      "edit-expense 3 Amy dining 60.00 exact Amy=20.00 Sandy=40.00 | Dinner"
+  with
+  | Command.Edit_expense
+      { id; payer; category; amount; split; description } ->
+      assert_equal 3 id;
+      assert_equal "Amy" payer;
+      assert_equal Types.Dining category;
+      assert_equal 6000 (Money.to_cents amount);
+      assert_equal "Dinner" description;
+      (match split with
+      | Command.Exact shares ->
+          assert_equal
+            [ ("Amy", 2000); ("Sandy", 4000) ]
+            (List.map
+               (fun (person, money) -> (person, Money.to_cents money))
+               shares)
+      | Command.Equal_all ->
+          assert_failure "Expected Exact split, got Equal_all"
+      | Command.Equal _ ->
+          assert_failure "Expected Exact split, got Equal)")
+  | _ -> assert_failure "Expected Edit_expense with Exact split"
 
 let test_add_expense_exact_with_description _ =
   match
@@ -148,6 +179,8 @@ let test_add_expense_exact_with_description _ =
       assert_equal "Dinner" description
   | _ -> assert_failure "Expected exact split with Dinner as the description"
 
+
+
 let suite =
   "Command tests"
   >::: [
@@ -155,6 +188,7 @@ let suite =
          "remove traveler" >:: test_remove_traveler;
          "equal all expense" >:: test_add_expense_equal_all;
          "exact expense" >:: test_add_expense_exact;
+         "edit expense exact" >:: test_edit_expense_exact;
          "equal people expense" >:: test_add_expense_equal_people;
          "add bill" >:: test_add_bill;
          "delete expense" >:: test_delete_expense;
