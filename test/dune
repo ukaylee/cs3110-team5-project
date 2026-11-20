@@ -1,5 +1,5 @@
 (tests
- (names test_main test_budget_report test_money test_command test_split test_session test_apply)
+ (names test_main test_budget_report test_money test_command test_trip test_split test_session test_apply)
  (libraries trip_tab ounit2))
 
 (cram
