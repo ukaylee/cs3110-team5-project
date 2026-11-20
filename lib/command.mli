@@ -25,7 +25,14 @@ type t =
       bill : bill;
       description : string;
     }
-  | Edit_expense of int
+  | Edit_expense of {
+      id : int;
+      payer : Types.person;
+      category : Types.category;
+      amount : Money.t;
+      split : split_spec;
+      description : string;
+    }
   | Delete_expense of int
   | List_expenses
   | Balances

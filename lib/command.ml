@@ -29,7 +29,14 @@ type t =
       bill : bill;
       description : string;
     }
-  | Edit_expense of int
+  | Edit_expense of {
+    id : int;
+    payer : Types.person;
+    category : Types.category;
+    amount : Money.t;
+    split : split_spec;
+    description : string;
+  }
   | Delete_expense of int
   | List_expenses
   | Balances
@@ -38,6 +45,21 @@ type t =
   | Report
   | Help
   | Quit
+
+(** Split tokens into the part before and after '|'. *)
+let split_at_pipe tokens =
+  let rec aux acc = function
+    | [] ->
+        Error "Please separate the command fields and description with '|'."
+    | "|" :: description ->
+        if List.mem "|" description then
+          Error "Please use only one '|' separator."
+        else
+          Ok (List.rev acc, description)
+    | token :: rest ->
+        aux (token :: acc) rest
+  in
+  aux [] tokens
 
 (** Parse a monetary amount. *)
 let parse_money s =
@@ -116,21 +138,12 @@ let parse_split tokens =
 
     add-expense PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION *)
 let parse_add_expense tokens =
-  let rec split_at_pipe acc = function
-    | [] -> Error "Please separate the split and description with '|'."
-    | "|" :: description ->
-        if List.mem "|" description then
-          Error "Please use only one '|' separator."
-        else Ok (List.rev acc, description)
-    | token :: rest -> split_at_pipe (token :: acc) rest
-  in
-
   match tokens with
   | payer :: category :: amount :: rest -> (
       match (parse_category category, parse_money amount) with
       | Error msg, _ | _, Error msg -> Error msg
       | Ok category, Ok amount -> (
-          match split_at_pipe [] rest with
+          match split_at_pipe rest with
           | Error msg -> Error msg
           | Ok (split_tokens, description_words) -> (
               let description = join_words description_words in
@@ -238,6 +251,42 @@ let parse_add_bill input =
         "Usage: add-bill PAYER CATEGORY tax=X tip=Y | DESCRIPTION | ITEM PRICE \
          PEOPLE"
 
+(** Parse an edit-expense command.
+
+    edit-expense ID PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION *)
+let parse_edit_expense tokens =
+  match tokens with
+  | id :: payer :: category :: amount :: rest -> (
+      match (parse_id id, parse_category category, parse_money amount) with
+      | Error msg, _, _ | _, Error msg, _ | _, _, Error msg ->
+          Error msg
+      | Ok id, Ok category, Ok amount -> (
+          match split_at_pipe rest with
+          | Error msg -> Error msg
+          | Ok (split_tokens, description_words) ->
+              let description = join_words description_words in
+              if description = "" then
+                Error "Please provide an expense description."
+              else
+                match parse_split split_tokens with
+                | Error msg -> Error msg
+                | Ok (split, leftover) ->
+                    if leftover <> [] then
+                      Error "Unexpected tokens in split specification."
+                    else
+                      Ok
+                        (Edit_expense
+                           {
+                             id;
+                             payer;
+                             category;
+                             amount;
+                             split;
+                             description;
+                           })))
+  | _ ->
+      Error
+        "Usage: edit-expense ID PAYER CATEGORY AMOUNT SPLIT | DESCRIPTION"
 (** Parse a terminal command. *)
 let parse input =
   let input = String.trim input in
@@ -253,10 +302,7 @@ let parse input =
   | [ "report" ] -> Ok Report
   | "add-traveler" :: [ person ] -> Ok (Add_traveler person)
   | "remove-traveler" :: [ person ] -> Ok (Remove_traveler person)
-  | "edit-expense" :: [ id ] -> (
-      match parse_id id with
-      | Ok id -> Ok (Edit_expense id)
-      | Error msg -> Error msg)
+  | "edit-expense" :: rest -> parse_edit_expense rest
   | "delete-expense" :: [ id ] -> (
       match parse_id id with
       | Ok id -> Ok (Delete_expense id)
