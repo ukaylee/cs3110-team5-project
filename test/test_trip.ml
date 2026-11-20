@@ -104,6 +104,13 @@ let test_add_traveler_case_sensitive _ =
   let t = ok (Trip.add_traveler t "amy") in
   check_people "both spellings" [ "Amy"; "amy" ] t
 
+let test_add_traveler_trims _ =
+  let t = trip_with [ "  Sandy " ] in
+  check_people "stored without the spaces" [ "Sandy" ] t;
+  assert_error "trailing space" (Trip.add_traveler t "Sandy ");
+  assert_error "leading space" (Trip.add_traveler t " Sandy");
+  check_people "unchanged after errors" [ "Sandy" ] t
+
 let test_is_traveler _ =
   let t = trip_with [ "Amy" ] in
   assert_bool "Amy is a traveler" (Trip.is_traveler t "Amy");
@@ -296,6 +303,7 @@ let tests =
          "add_traveler rejects empty" >:: test_add_traveler_empty;
          "add_traveler rejects duplicate" >:: test_add_traveler_duplicate;
          "add_traveler is case-sensitive" >:: test_add_traveler_case_sensitive;
+         "add_traveler trims whitespace" >:: test_add_traveler_trims;
          "is_traveler" >:: test_is_traveler;
          "remove_traveler unknown" >:: test_remove_traveler_unknown;
          "remove_traveler with no expenses" >:: test_remove_traveler_free;
