@@ -18,7 +18,8 @@ let is_traveler t p = List.mem p t.travelers
 (* ---------- travelers ---------- *)
 
 let add_traveler t p =
-  if String.trim p = "" then Error "a traveler's name cannot be empty"
+  let p = String.trim p in 
+  if p = "" then Error "a traveler's name cannot be empty"
   else if is_traveler t p then
     Error (Printf.sprintf "%s is already a traveler" p)
   else Ok { t with travelers = t.travelers @ [ p ] }
