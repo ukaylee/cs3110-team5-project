@@ -199,6 +199,19 @@ let misc_tests =
     ( "apply with unknown payee raises" >:: fun _ ->
       let b = balances [ ("Amy", 500); ("Sandy", -500) ] in
       assert_invalid (fun () -> Settle.apply b [ pay "Sandy" "Zed" 100 ]) );
+    ( "apply with same payer and payee raises" >:: fun _ ->
+      let b = balances [ ("Amy", 500); ("Sandy", -500) ] in
+      assert_invalid (fun () -> Settle.apply b [ pay "Amy" "Amy" 100 ]) );
+    ( "apply with amount 0 raises" >:: fun _ ->
+      let b = balances [ ("Amy", 500); ("Sandy", -500) ] in
+      assert_invalid (fun () -> Settle.apply b [ pay "Amy" "Sandy" 0 ]) );
+    ( "apply with negative amount raises" >:: fun _ ->
+      let b = balances [ ("Amy", 500); ("Sandy", -500) ] in
+      assert_invalid (fun () -> Settle.apply b [ pay "Amy" "Sandy" ~-100 ]) );
+    ( "apply with valid then invalid payment raises" >:: fun _ ->
+      let b = balances [ ("Amy", 500); ("Sandy", -500) ] in
+      assert_invalid (fun () ->
+          Settle.apply b [ pay "Amy" "Sandy" 100; pay "Amy" "Sandy" ~-100 ]) );
     ( "is_settled on all zero" >:: fun _ ->
       assert_bool "should be settled"
         (Settle.is_settled (balances [ ("Amy", 0); ("Sandy", 0) ])) );

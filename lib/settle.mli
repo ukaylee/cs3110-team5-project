@@ -33,7 +33,9 @@ val apply : Balance.t -> payment list -> Balance.t
 (** [apply b payments] is the balances after every payment in [payments] is
     made: each payment raises its payer's balance by its amount and lowers its
     payee's balance by the same amount. People stay in the same order as in [b].
-    @raise Invalid_argument if a payment's payer or payee is not in [b]. *)
+    @raise Invalid_argument
+      if a payment's payer or payee is not in [b], its payer and payee are the
+      same person, or its amount is not strictly positive. *)
 
 val is_settled : Balance.t -> bool
 (** [is_settled b] is [true] iff every balance in [b] is zero. *)

@@ -163,6 +163,21 @@ let check_person balances person =
     invalid_arg
       (Printf.sprintf "Settle.apply: %s is not in the balances" person)
 
+(** [check_payment balances payment] is [()] if [payment] is valid for
+    [balances]: its payer and payee are both in [balances], they are different
+    people, and its amount is strictly positive.
+    @raise Invalid_argument otherwise. *)
+let check_payment balances payment =
+  check_person balances payment.payer;
+  check_person balances payment.payee;
+  if payment.payer = payment.payee then
+    invalid_arg
+      (Printf.sprintf "Settle.apply: %s cannot pay themselves" payment.payer);
+  if Money.compare payment.amount Money.zero <= 0 then
+    invalid_arg
+      (Printf.sprintf "Settle.apply: payment from %s to %s must be positive"
+         payment.payer payment.payee)
+
 (** [change_from payments person] is how much [payments] raise [person]'s
     balance: the total they pay minus the total they receive. *)
 let change_from payments person =
@@ -175,11 +190,7 @@ let change_from payments person =
     Money.zero payments
 
 let apply balances payments =
-  List.iter
-    (fun payment ->
-      check_person balances payment.payer;
-      check_person balances payment.payee)
-    payments;
+  List.iter (check_payment balances) payments;
   let updated =
     List.map
       (fun (person, balance) ->
