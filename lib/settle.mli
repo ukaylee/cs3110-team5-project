@@ -1,0 +1,52 @@
+(** Settling up: turning net balances into a list of payments that brings every
+    traveler's balance to zero. *)
+
+type payment = {
+  payer : Types.person;  (** the person sending money *)
+  payee : Types.person;  (** the person receiving it *)
+  amount : Money.t;  (** how much is sent *)
+}
+(** [payer] pays [payee] [amount]. Every payment produced by this module has a
+    strictly positive [amount] and a [payer] different from its [payee]. *)
+
+val greedy : Balance.t -> payment list
+(** [greedy b] is a list of payments that settles [b]. [apply b (greedy b)]
+    leaves everyone at zero. The person who owes the most pays the person who is
+    owed the most, as much as possible (the smaller of the two amounts). This
+    rule repeats to choose payments until everyone is settled. Ties go to
+    whoever comes first in [b]. Payments are listed in the order they are
+    chosen. *)
+
+val payments : Balance.t -> payment list
+(** [payments b] is a list of payments that settles [b] using as few payments as
+    possible. [apply b (payments b)] leaves everyone at zero, and no list of
+    payments that settles [b] is shorter. The people with a nonzero balance are
+    split into as many separate groups as possible whose balances each sum to
+    zero, and each group is settled by [greedy]. Because the search for groups
+    takes exponential time in [n], if more than 12 people in [b] have a nonzero
+    balance, then [payments b] is [greedy b] instead, which is still a valid
+    plan but may not always have the fewest payments. The result depends only on
+    [b], including its order, such that the same balances always give the same
+    payments. *)
+
+val apply : Balance.t -> payment list -> Balance.t
+(** [apply b payments] is the balances after every payment in [payments] is
+    made: each payment raises its payer's balance by its amount and lowers its
+    payee's balance by the same amount. People stay in the same order as in [b].
+    @raise Invalid_argument
+      if a payment's payer or payee is not in [b], its payer and payee are the
+      same person, or its amount is not strictly positive. *)
+
+val is_settled : Balance.t -> bool
+(** [is_settled b] is [true] iff every balance in [b] is zero. *)
+
+val payment_to_string : payment -> string
+(** [payment_to_string p] describes [p] as ["PAYER pays PAYEE $AMOUNT"], e.g.
+    ["Amy pays Sandy $23.40"], where [AMOUNT] is formatted by
+    {!Money.to_string}. *)
+
+val to_string : payment list -> string
+(** [to_string payments] is the text printed by the [settle] command: each
+    payment as described by {!payment_to_string}, one per line in order, with no
+    trailing newline. It is ["Everyone is settled up."] if [payments] is empty.
+*)

@@ -20,6 +20,6 @@
  (synopsis "Terminal app for splitting group trip expenses")
  (description
   "Logs shared expenses, splits them equally, by amount, by percentage, or itemized, computes minimal settle-up payments, and tracks budgets.")
- (depends ocaml dune ounit2)
+ (depends ocaml dune (ounit2 :with-test) (qcheck :with-test))
  (tags
   ("ocaml" "expenses" "cs3110")))
