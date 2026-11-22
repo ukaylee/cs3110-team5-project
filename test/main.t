@@ -5,13 +5,6 @@ Quitting with "quit" prints the trip summary, the help hint, and says goodbye.
   Type "help" for commands or "quit" to leave.
   Goodbye!
 
-"exit" is accepted as an alias for "quit".
-
-  $ printf 'Trip B\nexit\n' | ../bin/main.exe
-  Trip "Trip B": 0 traveler(s), 0 expense(s).
-  Type "help" for commands or "quit" to leave.
-  Goodbye!
-
 Pressing Enter with no name falls back to "Untitled trip".
 
   $ printf '\nquit\n' | ../bin/main.exe

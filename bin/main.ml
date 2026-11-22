@@ -59,12 +59,7 @@ let handle session line =
       match Session.apply session command with
       | Error msg -> (session, "Error: " ^ msg, false)
       | Ok (updated_session, output) ->
-          let should_quit =
-            match command with
-            | Command.Quit -> true
-            | _ -> false
-          in
-          (updated_session, output, should_quit))
+          (updated_session, output, Command.is_quit command))
 
 (** [loop session] reads and executes commands until the user quits or input
     ends. Each successful command passes its updated session to the next turn.
@@ -77,9 +72,8 @@ let rec loop session =
       let line = String.trim line in
       if line = "" then loop session
       else
-        let command_line = if line = "exit" then "quit" else line in
         let updated_session, output, should_quit =
-          handle session command_line
+          handle session line
         in
         if output <> "" then print_endline output;
         if not should_quit then loop updated_session
