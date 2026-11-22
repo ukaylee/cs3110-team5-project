@@ -320,4 +320,3 @@ let parse input =
 let is_quit = function
   | Quit -> true
   | _ -> false
-  

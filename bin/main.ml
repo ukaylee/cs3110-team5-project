@@ -72,9 +72,7 @@ let rec loop session =
       let line = String.trim line in
       if line = "" then loop session
       else
-        let updated_session, output, should_quit =
-          handle session line
-        in
+        let updated_session, output, should_quit = handle session line in
         if output <> "" then print_endline output;
         if not should_quit then loop updated_session
 

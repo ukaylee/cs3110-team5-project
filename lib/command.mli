@@ -62,4 +62,3 @@ val parse : string -> (t, string) result
 
 val is_quit : t -> bool
 (** [is_quit command] is [true] iff [command] is {!Quit}. *)
-  

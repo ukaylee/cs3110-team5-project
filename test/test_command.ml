@@ -138,19 +138,19 @@ let test_missing_description _ =
   match Command.parse "add-expense Amy dining 40.00 equal all |" with
   | Error _ -> ()
   | Ok _ -> assert_failure "Expected an error for missing description"
+
 let test_edit_expense_exact _ =
   match
-    parse
-      "edit-expense 3 Amy dining 60.00 exact Amy=20.00 Sandy=40.00 | Dinner"
+    parse "edit-expense 3 Amy dining 60.00 exact Amy=20.00 Sandy=40.00 | Dinner"
   with
-  | Command.Edit_expense
-      { id; payer; category; amount; split; description } ->
+  | Command.Edit_expense { id; payer; category; amount; split; description }
+    -> (
       assert_equal 3 id;
       assert_equal "Amy" payer;
       assert_equal Types.Dining category;
       assert_equal 6000 (Money.to_cents amount);
       assert_equal "Dinner" description;
-      (match split with
+      match split with
       | Command.Exact shares ->
           assert_equal
             [ ("Amy", 2000); ("Sandy", 4000) ]
@@ -159,8 +159,7 @@ let test_edit_expense_exact _ =
                shares)
       | Command.Equal_all ->
           assert_failure "Expected Exact split, got Equal_all"
-      | Command.Equal _ ->
-          assert_failure "Expected Exact split, got Equal)")
+      | Command.Equal _ -> assert_failure "Expected Exact split, got Equal)")
   | _ -> assert_failure "Expected Edit_expense with Exact split"
 
 let test_add_expense_exact_with_description _ =
@@ -178,8 +177,6 @@ let test_add_expense_exact_with_description _ =
            shares);
       assert_equal "Dinner" description
   | _ -> assert_failure "Expected exact split with Dinner as the description"
-
-
 
 let suite =
   "Command tests"

@@ -1,15 +1,10 @@
-
 open OUnit2
 open Trip_tab
 
 let money cents = Money.of_cents cents
-
 let cents m = Money.to_cents m
-
 let cents_list ms = List.map Money.to_cents ms
-
-let test_zero _ =
-  assert_equal 0 (cents Money.zero)
+let test_zero _ = assert_equal 0 (cents Money.zero)
 
 let test_of_cents _ =
   assert_equal 1250 (cents (money 1250));
@@ -57,82 +52,64 @@ let test_arithmetic _ =
   assert_equal 1500 (cents (Money.add (money 1000) (money 500)));
   assert_equal 500 (cents (Money.sub (money 1000) (money 500)));
   assert_equal (-500) (cents (Money.neg (money 500)));
-  assert_equal 600 (cents (Money.sum [money 100; money 200; money 300]));
+  assert_equal 600 (cents (Money.sum [ money 100; money 200; money 300 ]));
   assert_equal 0 (cents (Money.sum []));
-  assert_equal (-100) (cents (Money.sum [money (-300); money 200]))
+  assert_equal (-100) (cents (Money.sum [ money (-300); money 200 ]))
 
 let test_compare _ =
   assert_equal (-1) (Money.compare (money 100) (money 200));
   assert_equal 0 (Money.compare (money 100) (money 100));
   assert_equal 1 (Money.compare (money 200) (money 100));
   assert_bool "equal values" (Money.equal (money 100) (money 100));
-  assert_bool "different values"
-    (not (Money.equal (money 100) (money 200)))
+  assert_bool "different values" (not (Money.equal (money 100) (money 200)))
 
 let test_split_evenly _ =
-  assert_equal [25; 25; 25; 25]
+  assert_equal [ 25; 25; 25; 25 ]
     (cents_list (Money.split_evenly (money 100) 4));
-  assert_equal [34; 33; 33]
-    (cents_list (Money.split_evenly (money 100) 3));
-  assert_equal [1; 1; 0]
-    (cents_list (Money.split_evenly (money 2) 3));
-  assert_equal [0; 0; 0]
-    (cents_list (Money.split_evenly Money.zero 3));
-  assert_equal [5]
-    (cents_list (Money.split_evenly (money 5) 1));
-  assert_equal [4; 3; 3]
-    (cents_list (Money.split_evenly (money 10) 3))
+  assert_equal [ 34; 33; 33 ] (cents_list (Money.split_evenly (money 100) 3));
+  assert_equal [ 1; 1; 0 ] (cents_list (Money.split_evenly (money 2) 3));
+  assert_equal [ 0; 0; 0 ] (cents_list (Money.split_evenly Money.zero 3));
+  assert_equal [ 5 ] (cents_list (Money.split_evenly (money 5) 1));
+  assert_equal [ 4; 3; 3 ] (cents_list (Money.split_evenly (money 10) 3))
 
 let test_split_evenly_invalid _ =
-  assert_raises
-    (Invalid_argument "Money.split_evenly: n must be positive")
+  assert_raises (Invalid_argument "Money.split_evenly: n must be positive")
     (fun () -> Money.split_evenly (money 100) 0);
-  assert_raises
-    (Invalid_argument "Money.split_evenly: n must be positive")
+  assert_raises (Invalid_argument "Money.split_evenly: n must be positive")
     (fun () -> Money.split_evenly (money 100) (-1));
   assert_raises
-    (Invalid_argument "Money.split_evenly: total cannot be negative")
-    (fun () -> Money.split_evenly (money (-100)) 3)
+    (Invalid_argument "Money.split_evenly: total cannot be negative") (fun () ->
+      Money.split_evenly (money (-100)) 3)
 
 let test_allocate _ =
-  assert_equal [25; 25; 25; 25]
-    (cents_list (Money.allocate (money 100) [1; 1; 1; 1]));
-  assert_equal [50; 50]
-    (cents_list (Money.allocate (money 100) [1; 1]));
-  assert_equal [25; 75]
-    (cents_list (Money.allocate (money 100) [1; 3]));
-  assert_equal [33; 67]
-    (cents_list (Money.allocate (money 100) [1; 2]));
-  assert_equal [0; 0; 0]
-    (cents_list (Money.allocate Money.zero [1; 2; 3]))
+  assert_equal [ 25; 25; 25; 25 ]
+    (cents_list (Money.allocate (money 100) [ 1; 1; 1; 1 ]));
+  assert_equal [ 50; 50 ] (cents_list (Money.allocate (money 100) [ 1; 1 ]));
+  assert_equal [ 25; 75 ] (cents_list (Money.allocate (money 100) [ 1; 3 ]));
+  assert_equal [ 33; 67 ] (cents_list (Money.allocate (money 100) [ 1; 2 ]));
+  assert_equal [ 0; 0; 0 ] (cents_list (Money.allocate Money.zero [ 1; 2; 3 ]))
 
 let test_allocate_remainders _ =
-  assert_equal [34; 33; 33]
-    (cents_list (Money.allocate (money 100) [1; 1; 1]));
-  assert_equal [1; 0]
-    (cents_list (Money.allocate (money 1) [1; 1]));
-  assert_equal [0; 1; 0]
-    (cents_list (Money.allocate (money 1) [1; 2; 1]))
+  assert_equal [ 34; 33; 33 ]
+    (cents_list (Money.allocate (money 100) [ 1; 1; 1 ]));
+  assert_equal [ 1; 0 ] (cents_list (Money.allocate (money 1) [ 1; 1 ]));
+  assert_equal [ 0; 1; 0 ] (cents_list (Money.allocate (money 1) [ 1; 2; 1 ]))
 
 let test_allocate_zero_weights _ =
-  assert_equal [0; 100; 0]
-    (cents_list (Money.allocate (money 100) [0; 1; 0]));
-  assert_equal [100; 0]
-    (cents_list (Money.allocate (money 100) [1; 0]))
+  assert_equal [ 0; 100; 0 ]
+    (cents_list (Money.allocate (money 100) [ 0; 1; 0 ]));
+  assert_equal [ 100; 0 ] (cents_list (Money.allocate (money 100) [ 1; 0 ]))
 
 let test_allocate_invalid _ =
-  assert_raises
-    (Invalid_argument "Money.allocate: total cannot be negative")
-    (fun () -> Money.allocate (money (-100)) [1; 2]);
-  assert_raises
-    (Invalid_argument "Money.allocate: weights cannot be empty")
+  assert_raises (Invalid_argument "Money.allocate: total cannot be negative")
+    (fun () -> Money.allocate (money (-100)) [ 1; 2 ]);
+  assert_raises (Invalid_argument "Money.allocate: weights cannot be empty")
     (fun () -> Money.allocate (money 100) []);
-  assert_raises
-    (Invalid_argument "Money.allocate: weights cannot be negative")
-    (fun () -> Money.allocate (money 100) [1; -1]);
+  assert_raises (Invalid_argument "Money.allocate: weights cannot be negative")
+    (fun () -> Money.allocate (money 100) [ 1; -1 ]);
   assert_raises
     (Invalid_argument "Money.allocate: weights must have a positive sum")
-    (fun () -> Money.allocate (money 100) [0; 0; 0])
+    (fun () -> Money.allocate (money 100) [ 0; 0; 0 ])
 
 let suite =
   "Money Tests"

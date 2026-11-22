@@ -43,9 +43,9 @@ val add_traveler : t -> Types.person -> (t, string) result
 (** [add_traveler t p] is [Ok t'], where [t'] is [t] with the trimmed form of
     [p] (leading and trailing whitespace removed) added at the {e end} of
     {!travelers}. It is [Error msg] if that trimmed name is empty or is already
-    a traveler. So [" Sandy"] and ["Sandy "] are the same traveler as
-    ["Sandy"]. Names are otherwise compared exactly, so ["amy"] and ["Amy"] are
-    different travelers (see {!Types.person}). *)
+    a traveler. So [" Sandy"] and ["Sandy "] are the same traveler as ["Sandy"].
+    Names are otherwise compared exactly, so ["amy"] and ["Amy"] are different
+    travelers (see {!Types.person}). *)
 
 val remove_traveler : t -> Types.person -> (t, string) result
 (** [remove_traveler t p] is [Ok t'], where [t'] is [t] without [p]. It is
