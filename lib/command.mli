@@ -59,3 +59,7 @@ type t =
 
 val parse : string -> (t, string) result
 (** Parse a terminal command. *)
+
+val is_quit : t -> bool
+(** [is_quit command] is [true] iff [command] is {!Quit}. *)
+  

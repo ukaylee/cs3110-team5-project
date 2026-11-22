@@ -1,2 +1,4 @@
 (library
- (name trip_tab))
+ (name trip_tab)
+ (instrumentation
+  (backend bisect_ppx)))

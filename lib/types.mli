@@ -1,9 +1,10 @@
-(** Shared vocabulary used by every module: travelers and spending categories. *)
+(** Shared vocabulary used by every module: travelers and spending categories.
+*)
 
 type person = string
 (** A traveler, identified by name. Names are compared exactly, so ["amy"] and
-    ["Amy"] are different people. {!Trip} is responsible for ensuring that
-    names are nonempty and unique within a trip. *)
+    ["Amy"] are different people. {!Trip} is responsible for ensuring that names
+    are nonempty and unique within a trip. *)
 
 (** The fixed spending categories that budgets and reports are keyed by. *)
 type category =
