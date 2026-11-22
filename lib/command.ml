@@ -314,3 +314,8 @@ let parse input =
   | "add-expense" :: rest -> parse_add_expense rest
   | "add-bill" :: _ -> parse_add_bill input
   | _ -> Error "Unrecognized command. Type 'help' for available commands."
+
+let is_quit = function
+  | Quit -> true
+  | _ -> false
+  
